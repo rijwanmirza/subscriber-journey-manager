@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -41,7 +42,9 @@ const Dashboard = () => {
     try {
       if (user?.email && user?.id) {
         const code = await subscription.subscribeUser(user.id, user.email, user.name);
-        setTestOtp(code);
+        if (code) { // Added check for code existence
+          setTestOtp(code);
+        }
         toast({
           title: "Verification Required",
           description: "A verification code has been sent to your email. Please check console for test code.",
@@ -59,7 +62,9 @@ const Dashboard = () => {
     try {
       if (user?.id) {
         const code = await subscription.unsubscribeUser(user.id);
-        setTestOtp(code);
+        if (code) { // Added check for code existence
+          setTestOtp(code);
+        }
       }
     } catch (error) {
       console.error("Unsubscribe error:", error);
@@ -75,7 +80,9 @@ const Dashboard = () => {
     try {
       if (user?.id && user?.email) {
         const code = await subscription.requestCoupon(user.id, user.email);
-        setTestOtp(code);
+        if (code) { // Added check for code existence
+          setTestOtp(code);
+        }
       }
     } catch (error) {
       console.error("Coupon request error:", error);

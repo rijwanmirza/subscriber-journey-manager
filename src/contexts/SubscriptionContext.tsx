@@ -42,13 +42,13 @@ export interface Coupon {
 // Define subscription context interface
 interface SubscriptionContextType {
   // Subscription methods
-  subscribeUser: (userId: string, email: string, name: string) => Promise<void>;
-  unsubscribeUser: (userId: string) => Promise<void>;
+  subscribeUser: (userId: string, email: string, name: string) => Promise<string>;
+  unsubscribeUser: (userId: string) => Promise<string>;
   verifySubscription: (userId: string, code: string) => Promise<void>;
   verifyUnsubscription: (userId: string, otp: string) => Promise<void>;
   
   // Coupon methods
-  requestCoupon: (userId: string, email: string) => Promise<void>;
+  requestCoupon: (userId: string, email: string) => Promise<string>;
   verifyCouponRequest: (userId: string, otp: string) => Promise<string>;
   
   // Admin methods
@@ -735,4 +735,3 @@ export const useSubscription = () => {
   }
   return context;
 };
-

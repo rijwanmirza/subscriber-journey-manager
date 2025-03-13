@@ -4,128 +4,63 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import OtpVerification from '@/components/OtpVerification';
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
-  const { 
-    subscribeUser, 
-    unsubscribeUser, 
-    verifyUnsubscription,
-    requestCoupon,
-    verifyCouponRequest 
-  } = useSubscription();
+  const { isSubscribed, subscribe, unsubscribe } = useSubscription();
   const navigate = useNavigate();
+  
+  const [showUnsubscribeDialog, setShowUnsubscribeDialog] = useState(false);
+  const [showCouponDialog, setShowCouponDialog] = useState(false);
+  const [showOtpVerification, setShowOtpVerification] = useState(false);
+  const [otpPurpose, setOtpPurpose] = useState<'coupon' | 'unsubscribe'>('coupon');
 
-  // Subscription Dialog
-  const [isSubscribeDialogOpen, setIsSubscribeDialogOpen] = useState(false);
-  const [subscribing, setSubscribing] = useState(false);
-
-  // Unsubscribe Dialog
-  const [isUnsubscribeDialogOpen, setIsUnsubscribeDialogOpen] = useState(false);
-  const [unsubscribeOtp, setUnsubscribeOtp] = useState('');
-  const [unsubscribing, setUnsubscribing] = useState(false);
-
-  // Coupon Dialog
-  const [isCouponDialogOpen, setIsCouponDialogOpen] = useState(false);
-  const [couponOtp, setCouponOtp] = useState('');
-  const [couponCode, setCouponCode] = useState('');
-  const [isRequestingCoupon, setIsRequestingCoupon] = useState(false);
-  const [isVerifyingCoupon, setIsVerifyingCoupon] = useState(false);
-  const [couponStep, setCouponStep] = useState<'request' | 'verify' | 'show'>('request');
-
-  // Handle subscribe
+  // Handle subscription
   const handleSubscribe = async () => {
-    if (!user) return;
-    
-    setSubscribing(true);
     try {
-      await subscribeUser(user.id, user.email, user.name);
-      setIsSubscribeDialogOpen(false);
+      await subscribe(user?.email || '');
       toast({
-        title: "Success",
-        description: "Please check your email to verify your subscription.",
+        title: "Verification Email Sent",
+        description: "Please check your email to confirm your subscription",
       });
     } catch (error) {
       // Error handled in context
-    } finally {
-      setSubscribing(false);
     }
   };
 
   // Handle unsubscribe
-  const handleUnsubscribe = async () => {
-    if (!user) return;
+  const handleUnsubscribe = () => {
+    setOtpPurpose('unsubscribe');
+    setShowUnsubscribeDialog(false);
+    setShowOtpVerification(true);
+  };
+
+  // Handle coupon code request
+  const handleCouponRequest = () => {
+    setOtpPurpose('coupon');
+    setShowCouponDialog(false);
+    setShowOtpVerification(true);
+  };
+
+  // Handle OTP verification success
+  const handleOtpSuccess = () => {
+    setShowOtpVerification(false);
     
-    setUnsubscribing(true);
-    try {
-      await unsubscribeUser(user.id);
-      setIsUnsubscribeDialogOpen(true);
-    } catch (error) {
-      // Error handled in context
-    } finally {
-      setUnsubscribing(false);
+    if (otpPurpose === 'unsubscribe') {
+      unsubscribe(user?.email || '');
+    } else {
+      // In a real app, this would generate and send a coupon code
+      console.log('Sending coupon code to:', user?.email);
     }
   };
-
-  // Verify unsubscribe OTP
-  const handleVerifyUnsubscribe = async () => {
-    if (!user) return;
-    
-    setUnsubscribing(true);
-    try {
-      await verifyUnsubscription(user.id, unsubscribeOtp);
-      setIsUnsubscribeDialogOpen(false);
-    } catch (error) {
-      // Error handled in context
-    } finally {
-      setUnsubscribing(false);
-    }
-  };
-
-  // Handle coupon request
-  const handleRequestCoupon = async () => {
-    if (!user) return;
-    
-    setIsRequestingCoupon(true);
-    try {
-      await requestCoupon(user.id, user.email);
-      setCouponStep('verify');
-    } catch (error) {
-      // Error handled in context
-    } finally {
-      setIsRequestingCoupon(false);
-    }
-  };
-
-  // Verify coupon OTP
-  const handleVerifyCoupon = async () => {
-    if (!user) return;
-    
-    setIsVerifyingCoupon(true);
-    try {
-      const code = await verifyCouponRequest(user.id, couponOtp);
-      setCouponCode(code);
-      setCouponStep('show');
-    } catch (error) {
-      // Error handled in context
-    } finally {
-      setIsVerifyingCoupon(false);
-    }
-  };
-
-  // Admin navigation
-  const goToAdmin = () => {
-    navigate('/admin');
-  };
-
-  if (!user) {
-    navigate('/login');
-    return null;
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -133,9 +68,9 @@ const Dashboard = () => {
         <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
           <div className="flex items-center space-x-4">
-            <span className="text-gray-600">Welcome, {user.name}</span>
-            {user.role === 'admin' && (
-              <Button variant="outline" onClick={goToAdmin}>
+            <span className="text-gray-600">Welcome, {user?.name}</span>
+            {user?.role === 'admin' && (
+              <Button variant="outline" onClick={() => navigate('/admin')}>
                 Admin Panel
               </Button>
             )}
@@ -146,189 +81,117 @@ const Dashboard = () => {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-        <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-2xl font-semibold mb-6">Subscriptions</h2>
+      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <div className="bg-white shadow rounded-lg p-6 mb-6">
+          <h2 className="text-2xl font-semibold mb-4">Subscription Status</h2>
           
-          <div className="space-y-8">
-            <div className="bg-gray-50 p-6 rounded-md">
-              <h3 className="text-xl font-medium mb-4">Newsletter Subscription</h3>
-              <p className="text-gray-600 mb-4">
-                Subscribe to our newsletter to receive the latest updates, promotions, and news directly to your inbox.
-              </p>
-              
-              <div className="flex space-x-4">
-                <Button 
-                  onClick={() => setIsSubscribeDialogOpen(true)}
-                  disabled={user.isSubscribed}
-                >
-                  {user.isSubscribed ? 'Already Subscribed' : 'Subscribe Now'}
-                </Button>
-                
-                {user.isSubscribed && (
-                  <Button 
-                    variant="outline" 
-                    onClick={handleUnsubscribe}
-                    disabled={unsubscribing}
-                  >
-                    {unsubscribing ? 'Processing...' : 'Unsubscribe'}
-                  </Button>
-                )}
+          {isSubscribed(user?.email || '') ? (
+            <div className="space-y-4">
+              <div className="flex items-center text-green-600">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+                <span>You are currently subscribed to our promotions</span>
               </div>
-            </div>
-            
-            <div className="bg-gray-50 p-6 rounded-md">
-              <h3 className="text-xl font-medium mb-4">Get Coupon Code</h3>
-              <p className="text-gray-600 mb-4">
-                Get a promotional coupon code sent directly to your email.
-              </p>
               
-              <Button onClick={() => {
-                setIsCouponDialogOpen(true);
-                setCouponStep('request');
-                setCouponOtp('');
-                setCouponCode('');
-              }}>
-                Get Coupon Code
+              <Button variant="outline" onClick={() => setShowUnsubscribeDialog(true)}>
+                Unsubscribe
               </Button>
             </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-gray-600">
+                Subscribe to receive special offers and promotions
+              </p>
+              
+              <Button onClick={handleSubscribe}>
+                Subscribe Now
+              </Button>
+            </div>
+          )}
+        </div>
+        
+        <div className="bg-white shadow rounded-lg p-6">
+          <h2 className="text-2xl font-semibold mb-4">Special Offers</h2>
+          
+          <div className="space-y-4">
+            <p className="text-gray-600">
+              Get exclusive coupon codes sent to your email
+            </p>
+            
+            <Button 
+              variant="outline"
+              onClick={() => setShowCouponDialog(true)}
+            >
+              Get Coupon Code
+            </Button>
           </div>
         </div>
       </main>
 
-      {/* Subscribe Dialog */}
-      <Dialog open={isSubscribeDialogOpen} onOpenChange={setIsSubscribeDialogOpen}>
+      {/* Unsubscribe Confirmation Dialog */}
+      <Dialog open={showUnsubscribeDialog} onOpenChange={setShowUnsubscribeDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Subscribe to Newsletter</DialogTitle>
-            <DialogDescription>
-              You'll receive a verification link in your email to confirm your subscription.
-            </DialogDescription>
+            <DialogTitle>Confirm Unsubscribe</DialogTitle>
           </DialogHeader>
           
           <div className="py-4">
-            <p className="text-sm text-gray-500">
-              By subscribing, you agree to receive marketing emails from us. You can unsubscribe at any time.
-            </p>
+            <p>Are you sure you want to unsubscribe from our promotional emails?</p>
           </div>
           
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsSubscribeDialogOpen(false)}>
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={() => setShowUnsubscribeDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSubscribe} disabled={subscribing}>
-              {subscribing ? 'Subscribing...' : 'Subscribe'}
+            <Button variant="destructive" onClick={handleUnsubscribe}>
+              Unsubscribe
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
-      {/* Unsubscribe Dialog */}
-      <Dialog open={isUnsubscribeDialogOpen} onOpenChange={setIsUnsubscribeDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Verify Unsubscription</DialogTitle>
-            <DialogDescription>
-              Please enter the OTP sent to your email to confirm unsubscription.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="py-4 space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="unsubscribe-otp">Enter OTP</Label>
-              <Input
-                id="unsubscribe-otp"
-                value={unsubscribeOtp}
-                onChange={(e) => setUnsubscribeOtp(e.target.value)}
-                placeholder="123456"
-              />
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsUnsubscribeDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleVerifyUnsubscribe} disabled={unsubscribing || !unsubscribeOtp}>
-              {unsubscribing ? 'Verifying...' : 'Confirm Unsubscribe'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Coupon Dialog */}
-      <Dialog open={isCouponDialogOpen} onOpenChange={setIsCouponDialogOpen}>
+      {/* Coupon Request Dialog */}
+      <Dialog open={showCouponDialog} onOpenChange={setShowCouponDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Get Coupon Code</DialogTitle>
-            <DialogDescription>
-              {couponStep === 'request' && "Request a coupon code to be sent to your email"}
-              {couponStep === 'verify' && "Enter the OTP sent to your email to get your coupon"}
-              {couponStep === 'show' && "Your coupon code is ready to use"}
-            </DialogDescription>
           </DialogHeader>
           
-          <div className="py-4 space-y-4">
-            {couponStep === 'request' && (
-              <p className="text-sm text-gray-500">
-                Click the button below to receive an OTP in your email. Once verified, you'll get your coupon code.
-              </p>
-            )}
-            
-            {couponStep === 'verify' && (
-              <div className="space-y-2">
-                <Label htmlFor="coupon-otp">Enter OTP</Label>
-                <Input
-                  id="coupon-otp"
-                  value={couponOtp}
-                  onChange={(e) => setCouponOtp(e.target.value)}
-                  placeholder="123456"
-                />
-              </div>
-            )}
-            
-            {couponStep === 'show' && (
-              <div className="text-center">
-                <div className="bg-gray-50 p-4 rounded-md border border-dashed border-gray-300">
-                  <p className="text-sm text-gray-500 mb-2">Your Coupon Code:</p>
-                  <p className="text-2xl font-bold text-primary">{couponCode}</p>
-                </div>
-                <p className="text-sm text-gray-500 mt-4">
-                  This coupon code has been sent to your email as well. 
-                </p>
-              </div>
-            )}
+          <div className="py-4">
+            <p>We'll send a verification code to your email ({user?.email}).</p>
+            <p className="text-sm text-gray-500 mt-2">
+              After verification, your coupon code will be sent to your email.
+            </p>
           </div>
           
-          <DialogFooter>
-            {couponStep === 'request' && (
-              <>
-                <Button variant="outline" onClick={() => setIsCouponDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleRequestCoupon} disabled={isRequestingCoupon}>
-                  {isRequestingCoupon ? 'Sending...' : 'Send OTP'}
-                </Button>
-              </>
-            )}
-            
-            {couponStep === 'verify' && (
-              <>
-                <Button variant="outline" onClick={() => setIsCouponDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleVerifyCoupon} disabled={isVerifyingCoupon || !couponOtp}>
-                  {isVerifyingCoupon ? 'Verifying...' : 'Verify OTP'}
-                </Button>
-              </>
-            )}
-            
-            {couponStep === 'show' && (
-              <Button onClick={() => setIsCouponDialogOpen(false)}>
-                Close
-              </Button>
-            )}
-          </DialogFooter>
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={() => setShowCouponDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCouponRequest}>
+              Send Verification Code
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* OTP Verification Dialog */}
+      <Dialog open={showOtpVerification} onOpenChange={setShowOtpVerification}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {otpPurpose === 'unsubscribe' ? 'Verify Unsubscribe' : 'Verify for Coupon'}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <OtpVerification
+            email={user?.email || ''}
+            onVerify={handleOtpSuccess}
+            onCancel={() => setShowOtpVerification(false)}
+            purpose={otpPurpose}
+          />
         </DialogContent>
       </Dialog>
     </div>

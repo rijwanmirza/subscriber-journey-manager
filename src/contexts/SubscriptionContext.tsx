@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
 
@@ -114,12 +115,13 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
     
     if (!localStorage.getItem(SMTP_SETTINGS_KEY)) {
+      // Updated default SMTP settings with provided Hostinger configuration
       const defaultSettings = {
-        host: 'smtp.example.com',
-        port: 587,
-        username: 'no-reply@example.com',
-        password: 'password123',
-        encryption: 'tls'
+        host: 'smtp.hostinger.com',
+        port: 465,
+        username: 'alerts@yoyoprime.com',
+        password: 'indusrabbit1@#$A',
+        encryption: 'ssl'
       };
       localStorage.setItem(SMTP_SETTINGS_KEY, JSON.stringify(defaultSettings));
     }

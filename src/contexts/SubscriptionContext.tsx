@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
 
@@ -189,13 +188,24 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         localStorage.setItem(SUBSCRIBERS_STORAGE_KEY, JSON.stringify([...subscribers, newSubscriber]));
       }
       
-      // In a real app, this would send an email with the verification link
+      // Simulate SMTP email sending
+      const smtpSettings = JSON.parse(localStorage.getItem(SMTP_SETTINGS_KEY) || '{}');
+      if (smtpSettings.host) {
+        console.log(`Simulating email sending via SMTP: ${smtpSettings.host}:${smtpSettings.port}`);
+        console.log(`From: ${smtpSettings.username}`);
+        console.log(`To: ${email}`);
+        console.log(`Subject: Verify Your Subscription`);
+        console.log(`Body: Your verification code is: ${verificationCode}`);
+      }
+      
       console.log(`Verification code for ${email}: ${verificationCode}`);
       
       toast({
         title: "Success",
         description: "Please check your email to verify subscription",
       });
+      
+      return verificationCode; // Return for testing
     } catch (error: any) {
       toast({
         title: "Error",
@@ -272,13 +282,24 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       
       localStorage.setItem(SUBSCRIBERS_STORAGE_KEY, JSON.stringify(updatedSubscribers));
       
-      // In a real app, this would send an email with the OTP
+      // Simulate SMTP email sending
+      const smtpSettings = JSON.parse(localStorage.getItem(SMTP_SETTINGS_KEY) || '{}');
+      if (smtpSettings.host) {
+        console.log(`Simulating email sending via SMTP: ${smtpSettings.host}:${smtpSettings.port}`);
+        console.log(`From: ${smtpSettings.username}`);
+        console.log(`To: ${subscriber.email}`);
+        console.log(`Subject: Confirm Unsubscription`);
+        console.log(`Body: Your unsubscription verification code is: ${otpCode}`);
+      }
+      
       console.log(`Unsubscribe OTP for ${subscriber.email}: ${otpCode}`);
       
       toast({
         title: "Verification Needed",
         description: "Please check your email for OTP to confirm unsubscription",
       });
+      
+      return otpCode; // Return for testing
     } catch (error: any) {
       toast({
         title: "Error",
@@ -340,13 +361,24 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       // Store OTP in localStorage (temporary, keyed by userId)
       localStorage.setItem(`coupon_otp_${userId}`, otpCode);
       
-      // In a real app, this would send an email with the OTP
+      // Simulate SMTP email sending
+      const smtpSettings = JSON.parse(localStorage.getItem(SMTP_SETTINGS_KEY) || '{}');
+      if (smtpSettings.host) {
+        console.log(`Simulating email sending via SMTP: ${smtpSettings.host}:${smtpSettings.port}`);
+        console.log(`From: ${smtpSettings.username}`);
+        console.log(`To: ${email}`);
+        console.log(`Subject: Your Coupon Code Request`);
+        console.log(`Body: Your verification code is: ${otpCode}`);
+      }
+      
       console.log(`Coupon OTP for ${email}: ${otpCode}`);
       
       toast({
         title: "Success",
         description: "Please check your email for OTP to get your coupon",
       });
+      
+      return otpCode; // Return for testing
     } catch (error: any) {
       toast({
         title: "Error",
@@ -703,3 +735,4 @@ export const useSubscription = () => {
   }
   return context;
 };
+

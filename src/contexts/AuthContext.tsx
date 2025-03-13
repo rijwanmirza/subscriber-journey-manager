@@ -17,7 +17,7 @@ interface AuthContextType {
   register: (email: string, password: string, name: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
-  resetPassword: (email: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<string>;
   verifyResetCode: (email: string, code: string, newPassword: string) => Promise<void>;
 }
 
@@ -154,7 +154,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
-  // Reset password
+  // Reset password - modified to return the reset code for testing
   const resetPassword = async (email: string) => {
     try {
       // Get users from localStorage
@@ -175,10 +175,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // In a real app, this would send an email with the reset code
       console.log(`Reset code for ${email}: ${resetCode}`);
       
+      // Simulate SMTP email sending
+      const smtpSettings = JSON.parse(localStorage.getItem('smtp_settings') || '{}');
+      if (smtpSettings.host) {
+        console.log(`Simulating email sending via SMTP: ${smtpSettings.host}:${smtpSettings.port}`);
+        console.log(`From: ${smtpSettings.username}`);
+        console.log(`To: ${email}`);
+        console.log(`Subject: Password Reset Code`);
+        console.log(`Body: Your password reset code is: ${resetCode}`);
+      }
+      
       toast({
         title: "Success",
         description: "Password reset code sent to your email!",
       });
+      
+      // Return the reset code for testing purposes
+      return resetCode;
     } catch (error: any) {
       toast({
         title: "Error",
@@ -242,3 +255,4 @@ export const useAuth = () => {
   }
   return context;
 };
+

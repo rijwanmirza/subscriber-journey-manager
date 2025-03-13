@@ -3,14 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { Button } from '@/components/ui/button';
-import { toast } from '@/hooks/use-toast';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import OtpVerification from '@/components/OtpVerification';
+import { toast } from '@/hooks/use-toast';
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
@@ -21,6 +17,7 @@ const Dashboard = () => {
   const [showCouponDialog, setShowCouponDialog] = useState(false);
   const [showOtpVerification, setShowOtpVerification] = useState(false);
   const [otpPurpose, setOtpPurpose] = useState<'coupon' | 'unsubscribe'>('coupon');
+  const [testOtp, setTestOtp] = useState<string>('');
 
   useEffect(() => {
     if (!user) {
@@ -43,26 +40,47 @@ const Dashboard = () => {
   const handleSubscribe = async () => {
     try {
       if (user?.email && user?.id) {
-        await subscription.subscribeUser(user.id, user.email, user.name || '');
+        const code = await subscription.subscribeUser(user.id, user.email, user.name);
+        setTestOtp(code);
         toast({
-          title: "Verification Email Sent",
-          description: "Please check your email to confirm your subscription",
+          title: "Verification Required",
+          description: "A verification code has been sent to your email. Please check console for test code.",
         });
       }
     } catch (error) {
-      // Error handled in context
+      console.error("Subscription error:", error);
     }
   };
 
-  const handleUnsubscribe = () => {
+  const handleUnsubscribe = async () => {
     setOtpPurpose('unsubscribe');
     setShowUnsubscribeDialog(false);
+    
+    try {
+      if (user?.id) {
+        const code = await subscription.unsubscribeUser(user.id);
+        setTestOtp(code);
+      }
+    } catch (error) {
+      console.error("Unsubscribe error:", error);
+    }
+    
     setShowOtpVerification(true);
   };
 
-  const handleCouponRequest = () => {
+  const handleCouponRequest = async () => {
     setOtpPurpose('coupon');
     setShowCouponDialog(false);
+    
+    try {
+      if (user?.id && user?.email) {
+        const code = await subscription.requestCoupon(user.id, user.email);
+        setTestOtp(code);
+      }
+    } catch (error) {
+      console.error("Coupon request error:", error);
+    }
+    
     setShowOtpVerification(true);
   };
 
@@ -99,7 +117,7 @@ const Dashboard = () => {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="bg-white shadow rounded-lg p-6 mb-6">
           <h2 className="text-2xl font-semibold mb-4">Subscription Status</h2>
           
@@ -148,6 +166,14 @@ const Dashboard = () => {
         </div>
       </main>
 
+      <div className="mt-8 bg-blue-50 p-4 rounded-md border border-blue-200">
+        <h3 className="text-sm font-medium text-blue-800">Testing Information</h3>
+        <p className="mt-1 text-sm text-blue-700">
+          SMTP emails are simulated in this demo. When you request a verification code, 
+          it will appear in the console logs and in the verification dialog for testing.
+        </p>
+      </div>
+
       <Dialog open={showUnsubscribeDialog} onOpenChange={setShowUnsubscribeDialog}>
         <DialogContent>
           <DialogHeader>
@@ -194,18 +220,13 @@ const Dashboard = () => {
       </Dialog>
 
       <Dialog open={showOtpVerification} onOpenChange={setShowOtpVerification}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {otpPurpose === 'unsubscribe' ? 'Verify Unsubscribe' : 'Verify for Coupon'}
-            </DialogTitle>
-          </DialogHeader>
-          
+        <DialogContent className="sm:max-w-md">
           <OtpVerification
             email={user?.email || ''}
             onVerify={handleOtpSuccess}
             onCancel={() => setShowOtpVerification(false)}
             purpose={otpPurpose}
+            testOtp={testOtp}
           />
         </DialogContent>
       </Dialog>

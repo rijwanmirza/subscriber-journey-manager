@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Copy, Mail, AlertCircle, Info, Check, RefreshCw } from 'lucide-react';
+import { Copy, Mail, AlertCircle, Info, Check, RefreshCw, ExternalLink } from 'lucide-react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 interface OtpVerificationProps {
@@ -34,6 +34,7 @@ const OtpVerification = ({ email, onVerify, onCancel, purpose, testOtp }: OtpVer
   const [displayTestOtp, setDisplayTestOtp] = useState('');
   const [smtpStatus, setSmtpStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
   const [emailSent, setEmailSent] = useState(false);
+  const [emailPreviewShown, setEmailPreviewShown] = useState(false);
   
   // Default SMTP configuration
   const [smtpConfig, setSmtpConfig] = useState<SmtpConfig>({
@@ -51,8 +52,79 @@ const OtpVerification = ({ email, onVerify, onCancel, purpose, testOtp }: OtpVer
     if (testOtp) {
       setDisplayTestOtp(testOtp);
       console.log(`Test OTP for ${email}: ${testOtp}`);
+    } else {
+      // Generate a random OTP if none is provided
+      const randomOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      setDisplayTestOtp(randomOtp);
+      console.log(`Generated OTP for ${email}: ${randomOtp}`);
     }
   }, [testOtp, email]);
+
+  // Automatically trigger email sending on component mount
+  useEffect(() => {
+    simulateSmtpSend();
+  }, []);
+
+  // Show simulated email in a new window
+  const showEmailPreview = () => {
+    if (emailPreviewShown) return;
+    
+    const emailSubject = purpose === 'coupon' ? 'Your Coupon Code Request' : 'Confirm Unsubscription';
+    const emailContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>${emailSubject}</title>
+        <style>
+          body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+          .otp-container { background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0; text-align: center; }
+          .otp-code { font-size: 24px; font-weight: bold; letter-spacing: 5px; margin: 0; }
+          .header { background-color: #4f46e5; color: white; padding: 20px; border-radius: 5px 5px 0 0; }
+          .content { border: 1px solid #e5e7eb; border-top: none; padding: 20px; border-radius: 0 0 5px 5px; }
+          .footer { margin-top: 20px; font-size: 12px; color: #6b7280; text-align: center; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h2 style="margin: 0; color: white;">${emailSubject}</h2>
+        </div>
+        <div class="content">
+          <p>Hello,</p>
+          <p>${purpose === 'coupon' ? 'You have requested a coupon code.' : 'We received a request to unsubscribe from our newsletter.'}</p>
+          <div class="otp-container">
+            <p style="font-size: 14px; margin-bottom: 10px;">Your verification code is:</p>
+            <p class="otp-code">${displayTestOtp}</p>
+          </div>
+          <p>This code will expire in 10 minutes.</p>
+          <p>If you did not request this, please ignore this email.</p>
+          <p>Best regards,<br>The Team</p>
+        </div>
+        <div class="footer">
+          <p>This is a simulated email for testing purposes.</p>
+        </div>
+      </body>
+      </html>
+    `;
+    
+    const newWindow = window.open('', '_blank', 'width=650,height=600');
+    if (newWindow) {
+      newWindow.document.write(emailContent);
+      newWindow.document.close();
+      setEmailPreviewShown(true);
+      
+      // Reset flag after window closes
+      newWindow.onbeforeunload = () => {
+        setEmailPreviewShown(false);
+      };
+    } else {
+      toast({
+        title: "Popup Blocked",
+        description: "Please allow popups to view the email preview",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Simulate SMTP connection and sending email with detailed logs
   const simulateSmtpSend = async () => {
@@ -62,6 +134,7 @@ const OtpVerification = ({ email, onVerify, onCancel, purpose, testOtp }: OtpVer
     
     try {
       // Simulate connection to SMTP server
+      console.clear(); // Clear previous logs
       console.log('%c========== SMTP CONNECTION DETAILS ==========', 'font-size: 14px; font-weight: bold; color: #0066cc');
       console.log(`%cConnecting to SMTP server: ${smtpConfig.host}:${smtpConfig.port}`, 'color: #333;');
       console.log(`%cUsing secure connection: ${smtpConfig.secure}`, 'color: #333;');
@@ -162,11 +235,6 @@ const OtpVerification = ({ email, onVerify, onCancel, purpose, testOtp }: OtpVer
     }
   };
 
-  // Automatically trigger email sending on component mount
-  useEffect(() => {
-    simulateSmtpSend();
-  }, []);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -187,7 +255,7 @@ const OtpVerification = ({ email, onVerify, onCancel, purpose, testOtp }: OtpVer
       
       // For demo purposes - in a real app, this would check against the actual OTP
       // Using testOtp for development testing if available
-      if ((testOtp && otp === testOtp) || (!testOtp && /^\d{6}$/.test(otp))) {
+      if ((testOtp && otp === testOtp) || (!testOtp && otp === displayTestOtp)) {
         toast({
           title: "Success",
           description: purpose === 'coupon' 
@@ -227,6 +295,7 @@ const OtpVerification = ({ email, onVerify, onCancel, purpose, testOtp }: OtpVer
   const resendEmail = () => {
     setEmailSent(false);
     setSmtpStatus('idle');
+    setEmailPreviewShown(false);
     simulateSmtpSend();
   };
 
@@ -260,27 +329,39 @@ const OtpVerification = ({ email, onVerify, onCancel, purpose, testOtp }: OtpVer
                 {smtpStatus === 'sending' && 'Connecting to SMTP server and sending your verification code...'}
                 {smtpStatus === 'success' && 
                   <>
-                    Email has been delivered to {email}. Check your inbox.
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      size="sm" 
-                      className="mt-2 w-full"
-                      onClick={resendEmail}
-                    >
-                      <RefreshCw className="h-3.5 w-3.5 mr-2" />
-                      Resend Email
-                    </Button>
+                    <div className="mb-2">Email has been delivered to {email}.</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full"
+                        onClick={showEmailPreview}
+                      >
+                        <ExternalLink className="h-3.5 w-3.5 mr-2" />
+                        View Email
+                      </Button>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full"
+                        onClick={resendEmail}
+                      >
+                        <RefreshCw className="h-3.5 w-3.5 mr-2" />
+                        Resend Email
+                      </Button>
+                    </div>
                   </>
                 }
                 {smtpStatus === 'error' && 
                   <>
-                    There was a problem sending your email. Please try again.
+                    <div className="mb-2">There was a problem sending your email.</div>
                     <Button 
                       type="button" 
                       variant="outline" 
                       size="sm" 
-                      className="mt-2 w-full"
+                      className="w-full"
                       onClick={resendEmail}
                     >
                       <RefreshCw className="h-3.5 w-3.5 mr-2" />
@@ -307,8 +388,8 @@ const OtpVerification = ({ email, onVerify, onCancel, purpose, testOtp }: OtpVer
             </div>
             
             {displayTestOtp && (
-              <div className="flex items-center justify-between p-2 bg-muted rounded-md text-sm">
-                <div>Test OTP: <span className="font-mono">{displayTestOtp}</span></div>
+              <div className="flex items-center justify-between p-2 bg-amber-50 text-amber-800 rounded-md">
+                <div className="font-medium">Test OTP: <span className="font-mono">{displayTestOtp}</span></div>
                 <Button 
                   type="button" 
                   variant="ghost" 
@@ -321,21 +402,17 @@ const OtpVerification = ({ email, onVerify, onCancel, purpose, testOtp }: OtpVer
               </div>
             )}
             
-            <div className="flex items-center p-2 bg-amber-50 text-amber-800 rounded-md text-sm">
-              <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+            <div className="flex items-center p-2 bg-blue-50 text-blue-800 rounded-md text-sm">
+              <Info className="h-4 w-4 mr-2 flex-shrink-0" />
               <div>
-                <p className="font-medium">How to see SMTP details:</p>
+                <p className="font-medium">See SMTP details in your browser:</p>
                 <ol className="list-decimal list-inside ml-1 space-y-1 mt-1">
                   <li>Press F12 to open Developer Tools</li>
                   <li>Click on the "Console" tab</li>
-                  <li>Look for "SMTP CONNECTION DETAILS" and "EMAIL TRANSMISSION" entries</li>
+                  <li>You'll see detailed SMTP logs showing the email sending process</li>
                 </ol>
               </div>
             </div>
-          </div>
-          
-          <div className="mt-6 text-sm text-center text-muted-foreground">
-            Didn't receive a code? Check the simulated SMTP logs in console or click the "Resend Email" button.
           </div>
         </form>
       </CardContent>

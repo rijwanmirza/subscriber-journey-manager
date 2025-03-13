@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Copy, Mail } from 'lucide-react';
+import { Copy, Mail, AlertCircle } from 'lucide-react';
 
 interface OtpVerificationProps {
   email: string;
@@ -127,10 +127,18 @@ const OtpVerification = ({ email, onVerify, onCancel, purpose, testOtp }: OtpVer
                 </Button>
               </div>
             )}
+            
+            <div className="flex items-center p-2 bg-amber-50 text-amber-800 rounded-md text-sm">
+              <AlertCircle className="h-4 w-4 mr-2" />
+              <div>
+                <p className="font-medium">In development mode:</p>
+                <p>Emails are simulated. Check the console (F12) to see the email details.</p>
+              </div>
+            </div>
           </div>
           
           <div className="mt-6 text-sm text-center text-muted-foreground">
-            Didn't receive a code? Check your spam folder.
+            Didn't receive a code? Check your spam folder or console logs.
           </div>
         </form>
       </CardContent>

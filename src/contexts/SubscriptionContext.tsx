@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
 
@@ -115,7 +114,6 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
     
     if (!localStorage.getItem(SMTP_SETTINGS_KEY)) {
-      // Updated default SMTP settings with provided Hostinger configuration
       const defaultSettings = {
         host: 'smtp.hostinger.com',
         port: 465,
@@ -134,6 +132,42 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   // Generate a verification code
   const generateCode = () => {
     return Math.floor(100000 + Math.random() * 900000).toString();
+  };
+
+  // Simulate email sending with detailed logging
+  const sendEmail = async (to: string, subject: string, body: string, options?: { cc?: string[], bcc?: string[] }) => {
+    const smtpSettings = JSON.parse(localStorage.getItem(SMTP_SETTINGS_KEY) || '{}');
+    
+    // Log detailed SMTP information
+    console.log('=============== EMAIL DETAILS ===============');
+    console.log(`SMTP Server: ${smtpSettings.host}:${smtpSettings.port}`);
+    console.log(`Encryption: ${smtpSettings.encryption}`);
+    console.log(`From: ${smtpSettings.username}`);
+    console.log(`To: ${to}`);
+    if (options?.cc && options.cc.length > 0) {
+      console.log(`CC: ${options.cc.join(', ')}`);
+    }
+    if (options?.bcc && options.bcc.length > 0) {
+      console.log(`BCC: ${options.bcc.join(', ')}`);
+    }
+    console.log(`Subject: ${subject}`);
+    console.log('Body:');
+    console.log(body);
+    console.log('=============================================');
+    
+    // In a real application, this would connect to the SMTP server
+    // and send the actual email. For now, we're just simulating.
+    
+    // To help with debugging, show a detailed toast message
+    toast({
+      title: "Email Sent (Simulated)",
+      description: `To: ${to}, Subject: ${subject}`,
+    });
+    
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    return true;
   };
 
   // Subscription methods
@@ -190,15 +224,27 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         localStorage.setItem(SUBSCRIBERS_STORAGE_KEY, JSON.stringify([...subscribers, newSubscriber]));
       }
       
-      // Simulate SMTP email sending
-      const smtpSettings = JSON.parse(localStorage.getItem(SMTP_SETTINGS_KEY) || '{}');
-      if (smtpSettings.host) {
-        console.log(`Simulating email sending via SMTP: ${smtpSettings.host}:${smtpSettings.port}`);
-        console.log(`From: ${smtpSettings.username}`);
-        console.log(`To: ${email}`);
-        console.log(`Subject: Verify Your Subscription`);
-        console.log(`Body: Your verification code is: ${verificationCode}`);
-      }
+      // Send verification email
+      const emailBody = `
+Hello ${name},
+
+Thank you for subscribing to our newsletter!
+
+To verify your subscription, please use the following verification code:
+
+${verificationCode}
+
+If you did not request this subscription, please ignore this email.
+
+Best regards,
+The Team
+      `;
+      
+      await sendEmail(
+        email,
+        "Verify Your Subscription",
+        emailBody
+      );
       
       console.log(`Verification code for ${email}: ${verificationCode}`);
       
@@ -249,6 +295,24 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       localStorage.setItem(SUBSCRIBERS_STORAGE_KEY, JSON.stringify(subscribers));
       localStorage.setItem(LISTS_STORAGE_KEY, JSON.stringify(lists));
       
+      // Send welcome email
+      const emailBody = `
+Hello ${subscribers[subscriberIndex].name},
+
+Thank you for verifying your subscription!
+
+You are now subscribed to our newsletter and will receive updates from us.
+
+Best regards,
+The Team
+      `;
+      
+      await sendEmail(
+        subscribers[subscriberIndex].email,
+        "Welcome to Our Newsletter!",
+        emailBody
+      );
+      
       toast({
         title: "Success",
         description: "Subscription verified successfully!",
@@ -284,15 +348,27 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       
       localStorage.setItem(SUBSCRIBERS_STORAGE_KEY, JSON.stringify(updatedSubscribers));
       
-      // Simulate SMTP email sending
-      const smtpSettings = JSON.parse(localStorage.getItem(SMTP_SETTINGS_KEY) || '{}');
-      if (smtpSettings.host) {
-        console.log(`Simulating email sending via SMTP: ${smtpSettings.host}:${smtpSettings.port}`);
-        console.log(`From: ${smtpSettings.username}`);
-        console.log(`To: ${subscriber.email}`);
-        console.log(`Subject: Confirm Unsubscription`);
-        console.log(`Body: Your unsubscription verification code is: ${otpCode}`);
-      }
+      // Send unsubscribe verification email
+      const emailBody = `
+Hello ${subscriber.name},
+
+We received a request to unsubscribe from our newsletter.
+
+To confirm this request, please use the following verification code:
+
+${otpCode}
+
+If you did not request to unsubscribe, please ignore this email.
+
+Best regards,
+The Team
+      `;
+      
+      await sendEmail(
+        subscriber.email,
+        "Confirm Unsubscription",
+        emailBody
+      );
       
       console.log(`Unsubscribe OTP for ${subscriber.email}: ${otpCode}`);
       
@@ -327,6 +403,24 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       }
       
       const subscriber = subscribers[subscriberIndex];
+      
+      // Send farewell email before removing
+      const emailBody = `
+Hello ${subscriber.name},
+
+We're sorry to see you go. You have been successfully unsubscribed from our newsletter.
+
+If you change your mind, you can always subscribe again.
+
+Best regards,
+The Team
+      `;
+      
+      await sendEmail(
+        subscriber.email,
+        "You've Been Unsubscribed",
+        emailBody
+      );
       
       // Remove from list
       const updatedLists = lists.map((list: SubscriptionList) => ({
@@ -363,15 +457,27 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       // Store OTP in localStorage (temporary, keyed by userId)
       localStorage.setItem(`coupon_otp_${userId}`, otpCode);
       
-      // Simulate SMTP email sending
-      const smtpSettings = JSON.parse(localStorage.getItem(SMTP_SETTINGS_KEY) || '{}');
-      if (smtpSettings.host) {
-        console.log(`Simulating email sending via SMTP: ${smtpSettings.host}:${smtpSettings.port}`);
-        console.log(`From: ${smtpSettings.username}`);
-        console.log(`To: ${email}`);
-        console.log(`Subject: Your Coupon Code Request`);
-        console.log(`Body: Your verification code is: ${otpCode}`);
-      }
+      // Send coupon verification email
+      const emailBody = `
+Hello,
+
+You have requested a coupon code.
+
+To verify your request, please use the following code:
+
+${otpCode}
+
+This code will expire in 24 hours.
+
+Best regards,
+The Team
+      `;
+      
+      await sendEmail(
+        email,
+        "Your Coupon Code Request",
+        emailBody
+      );
       
       console.log(`Coupon OTP for ${email}: ${otpCode}`);
       
@@ -407,8 +513,34 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         throw new Error('No active coupon available');
       }
       
+      // Get user email from subscribers or use a default
+      const subscribers = JSON.parse(localStorage.getItem(SUBSCRIBERS_STORAGE_KEY) || '[]');
+      const subscriber = subscribers.find((s: Subscriber) => s.userId === userId);
+      const email = subscriber ? subscriber.email : localStorage.getItem(`temp_email_${userId}`) || 'user@example.com';
+      
+      // Send coupon email
+      const emailBody = `
+Hello,
+
+Thank you for verifying your coupon request.
+
+Here's your coupon code: ${activeCoupon.code}
+
+Description: ${activeCoupon.description}
+
+Best regards,
+The Team
+      `;
+      
+      await sendEmail(
+        email,
+        "Your Coupon Code",
+        emailBody
+      );
+      
       // Clear OTP
       localStorage.removeItem(`coupon_otp_${userId}`);
+      localStorage.removeItem(`temp_email_${userId}`);
       
       toast({
         title: "Success",
@@ -651,12 +783,20 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         subscriberIds.includes(s.id) && s.isVerified
       );
       
-      // In a real app, this would send emails to all subscribers
+      // Send campaign to each subscriber
       console.log(`Sending campaign ${campaign.name} to ${targetSubscribers.length} subscribers`);
-      console.log(`Subject: ${campaign.subject}`);
-      console.log(`Content: ${campaign.content}`);
-      console.log(`CC: ${options.cc?.join(', ') || 'none'}`);
-      console.log(`BCC: ${options.bcc?.join(', ') || 'none'}`);
+      
+      for (const subscriber of targetSubscribers) {
+        await sendEmail(
+          subscriber.email,
+          campaign.subject,
+          campaign.content,
+          { cc: options.cc, bcc: options.bcc }
+        );
+        
+        // Add a small delay between emails to not overwhelm
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
       
       // Update campaign with CC and BCC
       const updatedCampaigns = campaigns.map((c: Campaign) => 
@@ -684,9 +824,27 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     try {
       localStorage.setItem(SMTP_SETTINGS_KEY, JSON.stringify(settings));
       
+      // Send a test email
+      const testEmailBody = `
+This is a test email to verify your SMTP settings.
+
+Server: ${settings.host}
+Port: ${settings.port}
+Encryption: ${settings.encryption}
+Username: ${settings.username}
+
+If you're seeing this email, your SMTP settings are correctly configured!
+      `;
+      
+      await sendEmail(
+        settings.username,
+        "SMTP Settings Test",
+        testEmailBody
+      );
+      
       toast({
         title: "Success",
-        description: "SMTP settings updated successfully",
+        description: "SMTP settings updated successfully and test email sent",
       });
     } catch (error: any) {
       toast({

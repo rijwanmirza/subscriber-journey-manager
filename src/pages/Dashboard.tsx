@@ -15,7 +15,7 @@ import OtpVerification from '@/components/OtpVerification';
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
-  const { isSubscribed, subscribe, unsubscribe } = useSubscription();
+  const subscription = useSubscription();
   const navigate = useNavigate();
   
   const [showUnsubscribeDialog, setShowUnsubscribeDialog] = useState(false);
@@ -23,14 +23,25 @@ const Dashboard = () => {
   const [showOtpVerification, setShowOtpVerification] = useState(false);
   const [otpPurpose, setOtpPurpose] = useState<'coupon' | 'unsubscribe'>('coupon');
 
+  // Check if user is subscribed
+  const isUserSubscribed = () => {
+    if (!user || !user.email) return false;
+    
+    // Check in subscribers list if the user exists and is verified
+    const subscribers = JSON.parse(localStorage.getItem('subscribers') || '[]');
+    return subscribers.some((s: any) => s.userId === user.id && s.isVerified);
+  };
+
   // Handle subscription
   const handleSubscribe = async () => {
     try {
-      await subscribe(user?.email || '');
-      toast({
-        title: "Verification Email Sent",
-        description: "Please check your email to confirm your subscription",
-      });
+      if (user?.email && user?.id) {
+        await subscription.subscribeUser(user.id, user.email, user.name || '');
+        toast({
+          title: "Verification Email Sent",
+          description: "Please check your email to confirm your subscription",
+        });
+      }
     } catch (error) {
       // Error handled in context
     }
@@ -55,10 +66,14 @@ const Dashboard = () => {
     setShowOtpVerification(false);
     
     if (otpPurpose === 'unsubscribe') {
-      unsubscribe(user?.email || '');
+      if (user?.id) {
+        subscription.unsubscribeUser(user.id);
+      }
     } else {
-      // In a real app, this would generate and send a coupon code
-      console.log('Sending coupon code to:', user?.email);
+      // Request a coupon
+      if (user?.id && user?.email) {
+        subscription.requestCoupon(user.id, user.email);
+      }
     }
   };
 
@@ -85,7 +100,7 @@ const Dashboard = () => {
         <div className="bg-white shadow rounded-lg p-6 mb-6">
           <h2 className="text-2xl font-semibold mb-4">Subscription Status</h2>
           
-          {isSubscribed(user?.email || '') ? (
+          {isUserSubscribed() ? (
             <div className="space-y-4">
               <div className="flex items-center text-green-600">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">

@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
@@ -23,16 +22,24 @@ const Dashboard = () => {
   const [showOtpVerification, setShowOtpVerification] = useState(false);
   const [otpPurpose, setOtpPurpose] = useState<'coupon' | 'unsubscribe'>('coupon');
 
-  // Check if user is subscribed
+  useEffect(() => {
+    if (!user) {
+      navigate('/login');
+    }
+  }, [user, navigate]);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
   const isUserSubscribed = () => {
     if (!user || !user.email) return false;
     
-    // Check in subscribers list if the user exists and is verified
     const subscribers = JSON.parse(localStorage.getItem('subscribers') || '[]');
     return subscribers.some((s: any) => s.userId === user.id && s.isVerified);
   };
 
-  // Handle subscription
   const handleSubscribe = async () => {
     try {
       if (user?.email && user?.id) {
@@ -47,21 +54,18 @@ const Dashboard = () => {
     }
   };
 
-  // Handle unsubscribe
   const handleUnsubscribe = () => {
     setOtpPurpose('unsubscribe');
     setShowUnsubscribeDialog(false);
     setShowOtpVerification(true);
   };
 
-  // Handle coupon code request
   const handleCouponRequest = () => {
     setOtpPurpose('coupon');
     setShowCouponDialog(false);
     setShowOtpVerification(true);
   };
 
-  // Handle OTP verification success
   const handleOtpSuccess = () => {
     setShowOtpVerification(false);
     
@@ -70,7 +74,6 @@ const Dashboard = () => {
         subscription.unsubscribeUser(user.id);
       }
     } else {
-      // Request a coupon
       if (user?.id && user?.email) {
         subscription.requestCoupon(user.id, user.email);
       }
@@ -89,7 +92,7 @@ const Dashboard = () => {
                 Admin Panel
               </Button>
             )}
-            <Button variant="ghost" onClick={logout}>
+            <Button variant="ghost" onClick={handleLogout}>
               Logout
             </Button>
           </div>
@@ -145,7 +148,6 @@ const Dashboard = () => {
         </div>
       </main>
 
-      {/* Unsubscribe Confirmation Dialog */}
       <Dialog open={showUnsubscribeDialog} onOpenChange={setShowUnsubscribeDialog}>
         <DialogContent>
           <DialogHeader>
@@ -167,7 +169,6 @@ const Dashboard = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Coupon Request Dialog */}
       <Dialog open={showCouponDialog} onOpenChange={setShowCouponDialog}>
         <DialogContent>
           <DialogHeader>
@@ -192,7 +193,6 @@ const Dashboard = () => {
         </DialogContent>
       </Dialog>
 
-      {/* OTP Verification Dialog */}
       <Dialog open={showOtpVerification} onOpenChange={setShowOtpVerification}>
         <DialogContent>
           <DialogHeader>

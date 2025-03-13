@@ -6,7 +6,8 @@ import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Copy, Mail, AlertCircle } from 'lucide-react';
+import { Copy, Mail, AlertCircle, Info } from 'lucide-react';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 interface OtpVerificationProps {
   email: string;
@@ -86,6 +87,19 @@ const OtpVerification = ({ email, onVerify, onCancel, purpose, testOtp }: OtpVer
     }
   };
 
+  const openConsole = () => {
+    console.log('%c========== EMAIL DELIVERY INFORMATION ==========', 'font-size: 14px; font-weight: bold; color: #0066cc');
+    console.log(`%cTo: ${email}`, 'color: #333; font-weight: bold');
+    console.log(`%cSubject: ${purpose === 'coupon' ? 'Your Coupon Code Request' : 'Confirm Unsubscription'}`, 'color: #333; font-weight: bold');
+    console.log(`%cOTP Code: ${displayTestOtp || 'Check above logs for the actual OTP code'}`, 'color: #ff5722; font-weight: bold');
+    console.log('%c===============================================', 'font-size: 14px; font-weight: bold; color: #0066cc');
+    
+    toast({
+      title: "Console Opened",
+      description: "Check the console (F12) for email details",
+    });
+  };
+
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
@@ -99,6 +113,23 @@ const OtpVerification = ({ email, onVerify, onCancel, purpose, testOtp }: OtpVer
       <CardContent>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
+            <Alert variant="default" className="bg-blue-50 border-blue-200 text-blue-800">
+              <Info className="h-4 w-4" />
+              <AlertTitle>Development Mode Active</AlertTitle>
+              <AlertDescription>
+                No real emails are being sent. Your OTP code is available in the browser console.
+                <Button 
+                  type="button" 
+                  variant="link" 
+                  size="sm" 
+                  onClick={openConsole}
+                  className="p-0 h-auto font-medium underline text-blue-700"
+                >
+                  Click here to view it
+                </Button>
+              </AlertDescription>
+            </Alert>
+
             <div className="space-y-2">
               <Label htmlFor="otp">Enter 6-digit code</Label>
               <InputOTP maxLength={6} value={otp} onChange={setOtp}>
@@ -131,14 +162,18 @@ const OtpVerification = ({ email, onVerify, onCancel, purpose, testOtp }: OtpVer
             <div className="flex items-center p-2 bg-amber-50 text-amber-800 rounded-md text-sm">
               <AlertCircle className="h-4 w-4 mr-2" />
               <div>
-                <p className="font-medium">In development mode:</p>
-                <p>Emails are simulated. Check the console (F12) to see the email details.</p>
+                <p className="font-medium">How to see email details:</p>
+                <ol className="list-decimal list-inside ml-1 space-y-1 mt-1">
+                  <li>Press F12 to open Developer Tools</li>
+                  <li>Click on the "Console" tab</li>
+                  <li>Look for "EMAIL DETAILS" entries</li>
+                </ol>
               </div>
             </div>
           </div>
           
           <div className="mt-6 text-sm text-center text-muted-foreground">
-            Didn't receive a code? Check your spam folder or console logs.
+            Didn't receive a code? Click the "View it" button above to see the simulated email.
           </div>
         </form>
       </CardContent>

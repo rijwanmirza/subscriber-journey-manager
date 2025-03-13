@@ -1,10 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { InfoIcon } from 'lucide-react';
 
 const ResetPassword = () => {
   const [email, setEmail] = useState('');
@@ -17,6 +19,16 @@ const ResetPassword = () => {
   const [isComplete, setIsComplete] = useState(false);
   
   const { resetPassword, verifyResetCode } = useAuth();
+
+  // For demo purposes - show console instructions when code is sent
+  useEffect(() => {
+    if (isCodeSent) {
+      console.log('========== PASSWORD RESET INFO ==========');
+      console.log(`Email: ${email}`);
+      console.log('Check the console logs above for the reset code');
+      console.log('=======================================');
+    }
+  }, [isCodeSent, email]);
 
   const handleRequestReset = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,6 +62,14 @@ const ResetPassword = () => {
     }
   };
 
+  const openConsole = () => {
+    console.log('%c========== EMAIL DELIVERY INFORMATION ==========', 'font-size: 14px; font-weight: bold; color: #0066cc');
+    console.log(`%cTo: ${email}`, 'color: #333; font-weight: bold');
+    console.log(`%cSubject: Reset Your Password`, 'color: #333; font-weight: bold');
+    console.log('%cCheck above logs for the actual reset code', 'color: #ff5722; font-weight: bold');
+    console.log('%c===============================================', 'font-size: 14px; font-weight: bold; color: #0066cc');
+  };
+
   if (isComplete) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -79,6 +99,24 @@ const ResetPassword = () => {
               : 'We will send you a reset code to your email'}
           </p>
         </div>
+        
+        <Alert variant="default" className="bg-blue-50 border-blue-200 text-blue-800">
+          <InfoIcon className="h-4 w-4" />
+          <AlertTitle>Development Mode</AlertTitle>
+          <AlertDescription>
+            No real emails are being sent. Your reset code will be available in the browser console.
+            Press F12 to view it or{' '}
+            <Button 
+              type="button" 
+              variant="link" 
+              size="sm" 
+              onClick={openConsole}
+              className="p-0 h-auto font-medium underline text-blue-700"
+            >
+              click here
+            </Button>
+          </AlertDescription>
+        </Alert>
         
         {!isCodeSent ? (
           <form onSubmit={handleRequestReset} className="space-y-6">

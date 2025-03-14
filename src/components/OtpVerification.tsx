@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Copy, Mail, AlertCircle, Info, Check, RefreshCw, ExternalLink } from 'lucide-react';
+import { Copy, Mail, AlertCircle, Info, Check, RefreshCw, ExternalLink, Server } from 'lucide-react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import EmailTestingInfo from './EmailTestingInfo';
 
@@ -37,15 +37,17 @@ const OtpVerification = ({ email, onVerify, onCancel, purpose, testOtp }: OtpVer
   const [emailSent, setEmailSent] = useState(false);
   const [emailPreviewShown, setEmailPreviewShown] = useState(false);
   const [showInfoCard, setShowInfoCard] = useState(false);
+  const [showServerSetup, setShowServerSetup] = useState(false);
   
-  // Updated SMTP configuration
+  // Load environment variables for SMTP configuration if available
+  // This will use the values set in the .env file in your production setup
   const [smtpConfig, setSmtpConfig] = useState<SmtpConfig>({
-    host: 'smtp.hostinger.com',
-    port: 465,
-    secure: true,
+    host: import.meta.env.VITE_SMTP_HOST || 'smtp.hostinger.com',
+    port: Number(import.meta.env.VITE_SMTP_PORT) || 465,
+    secure: import.meta.env.VITE_SMTP_SECURE === 'true' || true,
     auth: {
-      user: 'alerts@yoyoprime.com',
-      pass: 'indusrabbit1@#$A'
+      user: import.meta.env.VITE_SMTP_USER || 'alerts@yoyoprime.com',
+      pass: import.meta.env.VITE_SMTP_PASS || 'indusrabbit1@#$A'
     }
   });
 
@@ -331,6 +333,45 @@ const OtpVerification = ({ email, onVerify, onCancel, purpose, testOtp }: OtpVer
         <CardContent>
           <form onSubmit={handleSubmit}>
             <div className="space-y-4">
+              <Alert variant="destructive" className="bg-red-50 border-red-300 text-red-800">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Production Email Setup Required</AlertTitle>
+                <AlertDescription>
+                  <p className="mb-2">This application needs a backend server to send real emails. The current setup is in <strong>simulation mode only</strong>.</p>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full mb-2"
+                    onClick={() => setShowServerSetup(!showServerSetup)}
+                  >
+                    <Server className="h-3.5 w-3.5 mr-2" />
+                    {showServerSetup ? 'Hide Setup Instructions' : 'Show Setup Instructions'}
+                  </Button>
+                  {showServerSetup && (
+                    <div className="mt-2 p-3 bg-white rounded-md border border-red-200 text-sm">
+                      <p className="font-semibold">To enable real email sending on your VPS:</p>
+                      <ol className="list-decimal list-inside space-y-2 mt-2">
+                        <li>Install a Node.js server with Nodemailer or another email library</li>
+                        <li>Configure the server to use your SMTP credentials:
+                          <pre className="bg-gray-100 p-2 mt-1 rounded overflow-x-auto text-xs">
+{`Host: ${smtpConfig.host}
+Port: ${smtpConfig.port}
+User: ${smtpConfig.auth.user}
+Pass: ********
+Secure: ${smtpConfig.secure ? 'Yes' : 'No'}`}
+                          </pre>
+                        </li>
+                        <li>Create API endpoints for email sending</li>
+                        <li>Update this frontend to call your email API instead of simulating</li>
+                        <li>Reference the setup.sh script for environment variables</li>
+                      </ol>
+                      <p className="mt-2 text-xs">For detailed implementation instructions, check the documentation or ask the developer for backend email setup.</p>
+                    </div>
+                  )}
+                </AlertDescription>
+              </Alert>
+
               <Alert variant="default" className={`${smtpStatus === 'success' ? 'bg-green-50 border-green-200 text-green-800' : smtpStatus === 'error' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-800'}`}>
                 <div className="flex items-center">
                   {smtpStatus === 'sending' && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}

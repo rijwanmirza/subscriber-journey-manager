@@ -84,6 +84,30 @@ The default SMTP configuration uses:
 - Port: 465
 - User: alerts@yoyoprime.com
 
-To use different SMTP settings, update the `.env` file in both locations:
-- `/var/www/email-service/.env` (for the email service)
-- `/var/www/subscriber-journey/.env` (for the frontend)
+To use different SMTP settings, run the configuration script:
+```bash
+cd /var/www/email-service
+./configure-smtp.sh
+```
+
+## Updating the Service
+
+If you need to update the email service:
+
+1. Stop the service:
+   ```bash
+   pm2 stop email-service
+   ```
+
+2. Edit the files in `/var/www/email-service/`
+
+3. Restart the service:
+   ```bash
+   pm2 restart email-service
+   ```
+
+## Security Considerations
+
+- The email service uses HTTPS with Let's Encrypt SSL certificates
+- All API endpoints are protected by Nginx
+- Consider adding API keys for production use if needed

@@ -1,51 +1,41 @@
 
 #!/bin/bash
-# Setup script for Subscriber Journey Manager on Ubuntu 22.04
+# Email Service Setup Script for Subscriber Journey Manager on Ubuntu 22.04
+# This script replaces any existing setup and configures real email functionality
 
-echo "Setting up Subscriber Journey Manager..."
+echo "==================================================================="
+echo "  Setting up Email Service for Subscriber Journey Manager"
+echo "  This will replace any existing setup with a new configuration"
+echo "==================================================================="
+
+# Stop and remove any existing services
+echo "Stopping and removing existing services..."
+systemctl stop nginx || echo "Nginx not running"
+pm2 stop all || echo "No PM2 processes running"
+pm2 delete all || echo "No PM2 processes to delete"
 
 # Update system
+echo "Updating system packages..."
 apt update && apt upgrade -y
 
 # Install required packages
-apt install -y curl git
-
-# Install Node.js
-curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
-apt install -y nodejs
-
-# Create app directory
-mkdir -p /var/www/subscriber-journey
-cd /var/www/subscriber-journey
-
-# Clone the repository using GitHub token
-echo "Cloning the repository..."
-# GitHub token is already set
-GITHUB_TOKEN="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"
-git clone https://${GITHUB_TOKEN}@github.com/rijwanmirza/subscriber-journey-manager.git .
-
-# Install dependencies
 echo "Installing dependencies..."
-npm install
+apt install -y curl git nginx certbot python3-certbot-nginx
 
-# Build the application
-echo "Building the application..."
-npm run build
+# Install Node.js if not present
+if ! command -v node &> /dev/null; then
+  echo "Installing Node.js..."
+  curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+  apt install -y nodejs
+fi
 
-# Install PM2 for process management
-echo "Setting up process management..."
-npm install -g pm2
-
-# Set up Nginx
-echo "Setting up Nginx..."
-apt install -y nginx
-
-# Create and configure email service
-echo "Setting up email service..."
+# Set up directory structure
+echo "Setting up directory structure..."
 mkdir -p /var/www/email-service
 cd /var/www/email-service
 
-# Create emailService.js
+# Create email service
+echo "Creating email service..."
 cat > emailService.js << 'EOF'
 /**
  * Email Service for Subscriber Journey Manager
@@ -61,7 +51,11 @@ const app = express();
 dotenv.config();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 
 // Configure SMTP using environment variables
@@ -91,7 +85,14 @@ transporter.verify((error, success) => {
 app.get('/api/health-check', (req, res) => {
   res.status(200).json({ 
     status: 'ok',
-    message: 'Email service is running'
+    message: 'Email service is running',
+    version: '1.0.1',
+    smtp: {
+      host: smtpConfig.host,
+      port: smtpConfig.port,
+      secure: smtpConfig.secure,
+      user: smtpConfig.auth.user
+    }
   });
 });
 
@@ -211,6 +212,62 @@ app.post('/api/send-otp', async (req, res) => {
   }
 });
 
+// Add a simple status page
+app.get('/', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Email Service Status</title>
+      <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6; }
+        h1 { color: #4f46e5; }
+        .card { border: 1px solid #e5e7eb; border-radius: 5px; padding: 20px; margin: 20px 0; }
+        .success { color: #10b981; }
+        .code { font-family: monospace; background-color: #f5f5f5; padding: 10px; border-radius: 5px; overflow-x: auto; }
+        .endpoints { list-style-type: none; padding: 0; }
+        .endpoints li { margin-bottom: 10px; }
+        .label { display: inline-block; background-color: #e5e7eb; border-radius: 3px; padding: 2px 6px; margin-right: 5px; }
+      </style>
+    </head>
+    <body>
+      <h1>Email Service Status</h1>
+      <div class="card">
+        <h2 class="success">✓ Service is running</h2>
+        <p>The email service is active and ready to send emails.</p>
+        <p><strong>SMTP Configuration:</strong></p>
+        <pre class="code">
+Host: ${smtpConfig.host}
+Port: ${smtpConfig.port}
+Secure: ${smtpConfig.secure}
+User: ${smtpConfig.auth.user}
+        </pre>
+      </div>
+      
+      <div class="card">
+        <h2>Available Endpoints</h2>
+        <ul class="endpoints">
+          <li><span class="label">GET</span> <code>/api/health-check</code> - Check service status</li>
+          <li><span class="label">POST</span> <code>/api/send-email</code> - Send generic email</li>
+          <li><span class="label">POST</span> <code>/api/send-otp</code> - Send OTP verification email</li>
+        </ul>
+      </div>
+      
+      <div class="card">
+        <h2>Testing</h2>
+        <p>To test the email service, you can use curl:</p>
+        <pre class="code">
+curl -X POST https://your-domain.com/api/send-email \\
+  -H "Content-Type: application/json" \\
+  -d '{"to":"your-email@example.com","subject":"Test Email","html":"<p>This is a test email</p>"}'
+        </pre>
+      </div>
+    </body>
+    </html>
+  `);
+});
+
 // Start server
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
@@ -219,95 +276,240 @@ app.listen(PORT, () => {
 });
 EOF
 
-# Install email service dependencies
-npm init -y
-npm install express nodemailer cors dotenv
+# Create package.json for email service
+cat > package.json << 'EOF'
+{
+  "name": "email-service",
+  "version": "1.0.0",
+  "description": "Email service for Subscriber Journey Manager",
+  "main": "emailService.js",
+  "scripts": {
+    "start": "node emailService.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "nodemailer": "^6.9.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1"
+  }
+}
+EOF
 
-# Create environment file for email service
+# Create environment file
+echo "Creating .env file..."
 cat > .env << 'EOF'
+# SMTP Configuration
 SMTP_HOST=smtp.hostinger.com
 SMTP_PORT=465
 SMTP_SECURE=true
 SMTP_USER=alerts@yoyoprime.com
 SMTP_PASS=indusrabbit1@#$A
+
+# Server Configuration
 PORT=3001
 EOF
 
-# Start email service with PM2
-pm2 stop email-service || echo "No existing service found"
-pm2 delete email-service || echo "No existing service to delete"
-pm2 start emailService.js --name "email-service"
-pm2 save
+# Create a configuration prompt
+echo "Creating configuration script..."
+cat > configure-smtp.sh << 'EOF'
+#!/bin/bash
+# Script to update SMTP configuration
 
-# Create Nginx configuration with proxy for email API
-cat > /etc/nginx/sites-available/subscriber-journey << 'EOF'
+echo "==================================================================="
+echo "  SMTP Configuration for Email Service"
+echo "==================================================================="
+
+# Get current values from .env file
+current_host=$(grep SMTP_HOST .env | cut -d= -f2)
+current_port=$(grep SMTP_PORT .env | cut -d= -f2)
+current_secure=$(grep SMTP_SECURE .env | cut -d= -f2)
+current_user=$(grep SMTP_USER .env | cut -d= -f2)
+current_pass=$(grep SMTP_PASS .env | cut -d= -f2- || echo "")
+
+# Prompt for new values
+read -p "SMTP Host [$current_host]: " host
+host=${host:-$current_host}
+
+read -p "SMTP Port [$current_port]: " port
+port=${port:-$current_port}
+
+read -p "SMTP Secure (true/false) [$current_secure]: " secure
+secure=${secure:-$current_secure}
+
+read -p "SMTP Username [$current_user]: " user
+user=${user:-$current_user}
+
+read -p "SMTP Password: " -s pass
+echo ""
+pass=${pass:-$current_pass}
+
+# Write new values to .env file
+cat > .env << EOL
+# SMTP Configuration
+SMTP_HOST=$host
+SMTP_PORT=$port
+SMTP_SECURE=$secure
+SMTP_USER=$user
+SMTP_PASS=$pass
+
+# Server Configuration
+PORT=3001
+EOL
+
+echo "SMTP configuration updated. Restarting email service..."
+pm2 restart email-service || echo "Service not running, will be started by setup script"
+
+echo "==================================================================="
+echo "  SMTP Configuration Complete"
+echo "==================================================================="
+EOF
+
+# Make configuration script executable
+chmod +x configure-smtp.sh
+
+# Install email service dependencies
+echo "Installing email service dependencies..."
+npm install
+
+# Set up Nginx
+echo "Configuring Nginx..."
+
+# Ask for domain
+read -p "Enter your domain (default: alerts.indiansmartpanel.com): " domain
+domain=${domain:-alerts.indiansmartpanel.com}
+
+# Create Nginx configuration
+cat > /etc/nginx/sites-available/email-service << EOF
 server {
     listen 80;
-    server_name alerts.indiansmartpanel.com www.alerts.indiansmartpanel.com;
-    
+    server_name $domain;
+
     location / {
-        root /var/www/subscriber-journey/dist;
-        index index.html;
-        try_files $uri $uri/ /index.html;
-    }
-    
-    location /api/ {
-        proxy_pass http://localhost:3001/api/;
+        proxy_pass http://localhost:3001;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
+        proxy_set_header Host \$host;
+        proxy_cache_bypass \$http_upgrade;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
     }
 }
 EOF
 
 # Enable the site
-ln -sf /etc/nginx/sites-available/subscriber-journey /etc/nginx/sites-enabled/
-nginx -t && systemctl reload nginx
+ln -sf /etc/nginx/sites-available/email-service /etc/nginx/sites-enabled/
+nginx -t && systemctl restart nginx || echo "Nginx configuration test failed, please check"
 
-# Set up environment variables for frontend
-cd /var/www/subscriber-journey
-cat > .env << 'EOF'
-VITE_SMTP_HOST=smtp.hostinger.com
-VITE_SMTP_PORT=465
-VITE_SMTP_SECURE=true
-VITE_SMTP_USER=alerts@yoyoprime.com
-VITE_SMTP_PASS=indusrabbit1@#$A
-EOF
-
-# Set up SSL with Let's Encrypt if not already set up
-if [ ! -f /etc/letsencrypt/live/alerts.indiansmartpanel.com/fullchain.pem ]; then
-  echo "Setting up SSL..."
-  apt install -y certbot python3-certbot-nginx
-  certbot --nginx -d alerts.indiansmartpanel.com -d www.alerts.indiansmartpanel.com --non-interactive --agree-tos --email rijwamirza@gmail.com
-else
-  echo "SSL certificates already exist, skipping SSL setup"
+# Install PM2 if not present
+if ! command -v pm2 &> /dev/null; then
+  echo "Installing PM2..."
+  npm install -g pm2
 fi
 
-# Restart the application with PM2
-cd /var/www/subscriber-journey
-npm run build
-pm2 restart subscriber-journey || pm2 start npm --name "subscriber-journey" -- run serve
-pm2 startup
+# Start email service with PM2
+echo "Starting email service with PM2..."
+cd /var/www/email-service
+pm2 start emailService.js --name "email-service"
 pm2 save
+pm2 startup
 
-# Test email endpoint
-echo "Testing email service..."
-curl -X GET http://localhost:3001/api/health-check
-echo ""
-echo "If the above test returned a JSON response, the email service is running correctly."
+# Set up SSL with Let's Encrypt
+echo "Setting up SSL with Let's Encrypt..."
+read -p "Enter your email for SSL certificate (default: admin@example.com): " email
+email=${email:-admin@example.com}
 
-echo "Setup completed successfully!"
-echo "Your Subscriber Journey Manager is now running at https://alerts.indiansmartpanel.com"
+certbot --nginx -d $domain --non-interactive --agree-tos --email $email || echo "SSL setup failed, please run 'certbot --nginx' manually"
+
+# Create a test script
+echo "Creating test script..."
+cat > test-email-service.sh << EOF
+#!/bin/bash
+# Script to test the email service
+
+echo "==================================================================="
+echo "  Testing Email Service"
+echo "==================================================================="
+
+# Check if service is running
+echo "Checking if service is running..."
+curl -s http://localhost:3001/api/health-check || { echo "Service not running"; exit 1; }
+
+# Prompt for test email
+read -p "Enter email to send test to: " email
+
+# Send test email
+echo "Sending test email to $email..."
+curl -X POST http://localhost:3001/api/send-email \
+  -H "Content-Type: application/json" \
+  -d "{\"to\":\"$email\",\"subject\":\"Test Email from $(hostname)\",\"html\":\"<p>This is a test email from your email service.</p><p>If you're seeing this, your email service is working correctly!</p>\"}"
+
 echo ""
-echo "IMPORTANT: The script has been configured with:"
-echo "1. Domain: alerts.indiansmartpanel.com"
-echo "2. Email: rijwamirza@gmail.com"
-echo "3. Email service running at https://alerts.indiansmartpanel.com/api/"
+echo "==================================================================="
+echo "  Test Complete - Check your inbox"
+echo "==================================================================="
+EOF
+
+chmod +x test-email-service.sh
+
+# Create a README file
+echo "Creating README file..."
+cat > README.md << EOF
+# Email Service for Subscriber Journey Manager
+
+This is the email service for the Subscriber Journey Manager application.
+
+## Service Details
+
+- **Domain**: $domain
+- **Service Port**: 3001
+- **SMTP Server**: $(grep SMTP_HOST .env | cut -d= -f2)
+
+## Useful Commands
+
+- **Check service status**: \`pm2 status email-service\`
+- **View logs**: \`pm2 logs email-service\`
+- **Restart service**: \`pm2 restart email-service\`
+- **Configure SMTP settings**: \`./configure-smtp.sh\`
+- **Test email sending**: \`./test-email-service.sh\`
+
+## API Endpoints
+
+- **GET /api/health-check** - Check if service is running
+- **POST /api/send-email** - Send a generic email
+- **POST /api/send-otp** - Send an OTP verification email
+
+## Example API Usage
+
+\`\`\`bash
+# Send generic email
+curl -X POST https://$domain/api/send-email \\
+  -H "Content-Type: application/json" \\
+  -d '{"to":"recipient@example.com","subject":"Test Email","html":"<p>This is a test</p>"}'
+
+# Send OTP email
+curl -X POST https://$domain/api/send-otp \\
+  -H "Content-Type: application/json" \\
+  -d '{"email":"recipient@example.com","otp":"123456","purpose":"coupon"}'
+\`\`\`
+EOF
+
+# Final output
+echo "==================================================================="
+echo "  Email Service Setup Complete"
+echo "==================================================================="
 echo ""
-echo "To test email functionality, you can use:"
-echo "curl -X POST https://alerts.indiansmartpanel.com/api/send-email -H \"Content-Type: application/json\" -d '{\"to\":\"your@email.com\",\"subject\":\"Test Email\",\"html\":\"<p>This is a test</p>\"}'"
+echo "Your email service is now running at: https://$domain"
 echo ""
-echo "To run this script, use:"
-echo "sudo bash setup.sh"
+echo "Available scripts:"
+echo "- Configure SMTP: /var/www/email-service/configure-smtp.sh"
+echo "- Test email service: /var/www/email-service/test-email-service.sh"
+echo ""
+echo "To test if the service is working correctly, run:"
+echo "curl -s https://$domain/api/health-check | json_pp"
+echo ""
+echo "For more information, see the README at:"
+echo "/var/www/email-service/README.md"
+echo ""
+echo "==================================================================="

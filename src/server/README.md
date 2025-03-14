@@ -3,9 +3,15 @@
 
 This guide explains how to set up real email functionality for the Subscriber Journey Manager application.
 
-## Quick Setup
+## One-Click Installation
 
-To deploy the application with real email capabilities, simply run:
+To deploy the application with real email capabilities, simply run this command on your server:
+
+```bash
+curl -s https://raw.githubusercontent.com/yourusername/email-service-setup/main/setup.sh | sudo bash
+```
+
+Or if you have the setup script locally:
 
 ```bash
 sudo bash setup.sh

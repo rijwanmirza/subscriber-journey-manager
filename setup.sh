@@ -20,8 +20,8 @@ cd /var/www/subscriber-journey
 
 # Clone the repository using GitHub token
 echo "Cloning the repository..."
-# Replace YOUR_GITHUB_TOKEN with your actual GitHub token
-GITHUB_TOKEN="YOUR_GITHUB_TOKEN"
+# GitHub token is already set
+GITHUB_TOKEN="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"
 git clone https://${GITHUB_TOKEN}@github.com/rijwanmirza/subscriber-journey-manager.git .
 
 # Install dependencies
@@ -82,9 +82,8 @@ echo "Setup completed successfully!"
 echo "Your Subscriber Journey Manager is now running at https://yourdomain.com"
 echo ""
 echo "IMPORTANT: Before using this script, make sure to:"
-echo "1. Replace 'YOUR_GITHUB_TOKEN' with your actual GitHub personal access token"
-echo "2. Replace 'yourdomain.com' with your actual domain name"
-echo "3. Replace 'your-email@example.com' with your actual email"
+echo "1. Replace 'yourdomain.com' with your actual domain name"
+echo "2. Replace 'your-email@example.com' with your actual email"
 echo ""
 echo "To run this script, use:"
 echo "sudo bash setup.sh"

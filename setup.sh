@@ -40,7 +40,33 @@ npm install -g pm2
 echo "Setting up Nginx..."
 apt install -y nginx
 
-# Create Nginx configuration
+# Create email service directory
+echo "Setting up email service..."
+mkdir -p /var/www/email-service
+cd /var/www/email-service
+
+# Install email service dependencies
+npm init -y
+npm install express nodemailer cors dotenv
+
+# Copy email service file from the main project
+cp /var/www/subscriber-journey/src/server/emailService.js /var/www/email-service/
+
+# Create environment file for email service
+cat > /var/www/email-service/.env << 'EOF'
+SMTP_HOST=smtp.hostinger.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=alerts@yoyoprime.com
+SMTP_PASS=indusrabbit1@#$A
+PORT=3001
+EOF
+
+# Start email service with PM2
+pm2 start emailService.js --name "email-service"
+pm2 save
+
+# Create Nginx configuration with proxy for email API
 cat > /etc/nginx/sites-available/subscriber-journey << 'EOF'
 server {
     listen 80;
@@ -51,6 +77,15 @@ server {
         index index.html;
         try_files $uri $uri/ /index.html;
     }
+    
+    location /api/ {
+        proxy_pass http://localhost:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
 }
 EOF
 
@@ -58,7 +93,8 @@ EOF
 ln -sf /etc/nginx/sites-available/subscriber-journey /etc/nginx/sites-enabled/
 nginx -t && systemctl restart nginx
 
-# Set up environment variables for SMTP
+# Set up environment variables for frontend
+cd /var/www/subscriber-journey
 cat > .env << 'EOF'
 VITE_SMTP_HOST=smtp.hostinger.com
 VITE_SMTP_PORT=465
@@ -84,6 +120,10 @@ echo ""
 echo "IMPORTANT: The script has been configured with:"
 echo "1. Domain: alerts.indiansmartpanel.com"
 echo "2. Email: rijwamirza@gmail.com"
+echo "3. Email service running at https://alerts.indiansmartpanel.com/api/"
+echo ""
+echo "To test email functionality, you can use:"
+echo "curl -X POST https://alerts.indiansmartpanel.com/api/send-email -H \"Content-Type: application/json\" -d '{\"to\":\"your@email.com\",\"subject\":\"Test Email\",\"html\":\"<p>This is a test</p>\"}'"
 echo ""
 echo "To run this script, use:"
 echo "sudo bash setup.sh"

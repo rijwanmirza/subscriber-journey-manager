@@ -1,29 +1,22 @@
 
 /**
- * Email Service Template for Subscriber Journey Manager
- * 
- * IMPORTANT: This is just a template showing how to implement real email sending.
- * To use this, you need to set up a Node.js server and run this code on the server side.
- * 
- * HOW TO USE:
- * 1. Create a new Node.js project on your server
- * 2. Install required packages: npm install express nodemailer cors
- * 3. Copy this file to your server project
- * 4. Configure your SMTP settings below
- * 5. Start the server with: node emailService.js
- * 6. Update your frontend to call these API endpoints instead of simulating emails
+ * Email Service for Subscriber Journey Manager
  */
 
 const express = require('express');
 const nodemailer = require('nodemailer');
 const cors = require('cors');
+const dotenv = require('dotenv');
 const app = express();
+
+// Load environment variables
+dotenv.config();
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-// Configure SMTP using environment variables or defaults
+// Configure SMTP using environment variables
 const smtpConfig = {
   host: process.env.SMTP_HOST || 'smtp.hostinger.com',
   port: parseInt(process.env.SMTP_PORT || '465'),
@@ -37,13 +30,21 @@ const smtpConfig = {
 // Create transporter
 const transporter = nodemailer.createTransport(smtpConfig);
 
-// Verify connection
+// Verify connection on startup
 transporter.verify((error, success) => {
   if (error) {
     console.error('SMTP Connection Error:', error);
   } else {
     console.log('SMTP Server is ready to send mail');
   }
+});
+
+// Health check endpoint
+app.get('/api/health-check', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok',
+    message: 'Email service is running'
+  });
 });
 
 // Generic email sending endpoint
@@ -168,19 +169,3 @@ app.listen(PORT, () => {
   console.log(`Email service running on port ${PORT}`);
   console.log(`SMTP configured for: ${smtpConfig.host}:${smtpConfig.port}`);
 });
-
-/**
- * ENVIRONMENT VARIABLES:
- * 
- * Create a .env file in the same directory as this script with these variables:
- * 
- * SMTP_HOST=smtp.hostinger.com
- * SMTP_PORT=465
- * SMTP_SECURE=true
- * SMTP_USER=alerts@yoyoprime.com
- * SMTP_PASS=yourpassword
- * PORT=3001
- * 
- * Then install dotenv and add this at the top of the file:
- * require('dotenv').config();
- */

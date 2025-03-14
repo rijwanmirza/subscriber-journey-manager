@@ -35,12 +35,33 @@ const OtpVerification = ({ email, onVerify, onCancel, purpose, testOtp }: OtpVer
   const [displayTestOtp, setDisplayTestOtp] = useState('');
   const [smtpStatus, setSmtpStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
   const [emailSent, setEmailSent] = useState(false);
-  const [emailPreviewShown, setEmailPreviewShown] = useState(false);
   const [showInfoCard, setShowInfoCard] = useState(false);
   const [showServerSetup, setShowServerSetup] = useState(false);
+  const [serverMode, setServerMode] = useState<'simulation' | 'production'>('simulation');
   
+  // Check if the email service is available
+  useEffect(() => {
+    checkEmailService();
+  }, []);
+
+  // Check if the backend email service is available
+  const checkEmailService = async () => {
+    try {
+      const response = await fetch('/api/health-check');
+      if (response.ok) {
+        setServerMode('production');
+        console.log('Email service is available in production mode');
+      } else {
+        setServerMode('simulation');
+        console.log('Email service not available, falling back to simulation mode');
+      }
+    } catch (error) {
+      setServerMode('simulation');
+      console.log('Email service not available, falling back to simulation mode');
+    }
+  };
+
   // Load environment variables for SMTP configuration if available
-  // This will use the values set in the .env file in your production setup
   const [smtpConfig, setSmtpConfig] = useState<SmtpConfig>({
     host: import.meta.env.VITE_SMTP_HOST || 'smtp.hostinger.com',
     port: Number(import.meta.env.VITE_SMTP_PORT) || 465,
@@ -66,8 +87,59 @@ const OtpVerification = ({ email, onVerify, onCancel, purpose, testOtp }: OtpVer
 
   // Automatically trigger email sending on component mount
   useEffect(() => {
-    simulateSmtpSend();
-  }, []);
+    if (serverMode === 'production') {
+      sendRealEmail();
+    } else {
+      simulateSmtpSend();
+    }
+  }, [serverMode]);
+
+  // Send a real email via the backend API
+  const sendRealEmail = async () => {
+    if (emailSent) return;
+    
+    setSmtpStatus('sending');
+    
+    try {
+      const response = await fetch('/api/send-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          otp: displayTestOtp,
+          purpose
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        setSmtpStatus('success');
+        setEmailSent(true);
+        toast({
+          title: "Email Sent",
+          description: `Verification code sent to ${email}`,
+        });
+      } else {
+        setSmtpStatus('error');
+        toast({
+          title: "Email Failed",
+          description: result.message || "Failed to send email",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Email sending error:', error);
+      setSmtpStatus('error');
+      toast({
+        title: "Email Failed",
+        description: "Could not connect to the email service",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Show simulated email in a new window
   const showEmailPreview = () => {
@@ -313,8 +385,12 @@ const OtpVerification = ({ email, onVerify, onCancel, purpose, testOtp }: OtpVer
   const resendEmail = () => {
     setEmailSent(false);
     setSmtpStatus('idle');
-    setEmailPreviewShown(false);
-    simulateSmtpSend();
+    
+    if (serverMode === 'production') {
+      sendRealEmail();
+    } else {
+      simulateSmtpSend();
+    }
   };
 
   return (
@@ -326,51 +402,63 @@ const OtpVerification = ({ email, onVerify, onCancel, purpose, testOtp }: OtpVer
           <CardTitle className="text-center">Verify OTP</CardTitle>
           <CardDescription className="text-center">
             <Mail className="w-4 h-4 inline-block mr-1" />
-            We've simulated sending a code to {email}
+            {serverMode === 'production' 
+              ? `We've sent a code to ${email}` 
+              : `We've simulated sending a code to ${email}`}
           </CardDescription>
         </CardHeader>
         
         <CardContent>
           <form onSubmit={handleSubmit}>
             <div className="space-y-4">
-              <Alert variant="destructive" className="bg-red-50 border-red-300 text-red-800">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Production Email Setup Required</AlertTitle>
-                <AlertDescription>
-                  <p className="mb-2">This application needs a backend server to send real emails. The current setup is in <strong>simulation mode only</strong>.</p>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-full mb-2"
-                    onClick={() => setShowServerSetup(!showServerSetup)}
-                  >
-                    <Server className="h-3.5 w-3.5 mr-2" />
-                    {showServerSetup ? 'Hide Setup Instructions' : 'Show Setup Instructions'}
-                  </Button>
-                  {showServerSetup && (
-                    <div className="mt-2 p-3 bg-white rounded-md border border-red-200 text-sm">
-                      <p className="font-semibold">To enable real email sending on your VPS:</p>
-                      <ol className="list-decimal list-inside space-y-2 mt-2">
-                        <li>Install a Node.js server with Nodemailer or another email library</li>
-                        <li>Configure the server to use your SMTP credentials:
-                          <pre className="bg-gray-100 p-2 mt-1 rounded overflow-x-auto text-xs">
+              {serverMode === 'simulation' ? (
+                <Alert variant="destructive" className="bg-red-50 border-red-300 text-red-800">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Production Email Setup Required</AlertTitle>
+                  <AlertDescription>
+                    <p className="mb-2">This application needs a backend server to send real emails. The current setup is in <strong>simulation mode only</strong>.</p>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full mb-2"
+                      onClick={() => setShowServerSetup(!showServerSetup)}
+                    >
+                      <Server className="h-3.5 w-3.5 mr-2" />
+                      {showServerSetup ? 'Hide Setup Instructions' : 'Show Setup Instructions'}
+                    </Button>
+                    {showServerSetup && (
+                      <div className="mt-2 p-3 bg-white rounded-md border border-red-200 text-sm">
+                        <p className="font-semibold">To enable real email sending on your VPS:</p>
+                        <ol className="list-decimal list-inside space-y-2 mt-2">
+                          <li>Install a Node.js server with Nodemailer or another email library</li>
+                          <li>Configure the server to use your SMTP credentials:
+                            <pre className="bg-gray-100 p-2 mt-1 rounded overflow-x-auto text-xs">
 {`Host: ${smtpConfig.host}
 Port: ${smtpConfig.port}
 User: ${smtpConfig.auth.user}
 Pass: ********
 Secure: ${smtpConfig.secure ? 'Yes' : 'No'}`}
-                          </pre>
-                        </li>
-                        <li>Create API endpoints for email sending</li>
-                        <li>Update this frontend to call your email API instead of simulating</li>
-                        <li>Reference the setup.sh script for environment variables</li>
-                      </ol>
-                      <p className="mt-2 text-xs">For detailed implementation instructions, check the documentation or ask the developer for backend email setup.</p>
-                    </div>
-                  )}
-                </AlertDescription>
-              </Alert>
+                            </pre>
+                          </li>
+                          <li>Create API endpoints for email sending</li>
+                          <li>Update this frontend to call your email API instead of simulating</li>
+                          <li>Reference the setup.sh script for environment variables</li>
+                        </ol>
+                        <p className="mt-2 text-xs">For detailed implementation instructions, check the documentation or ask the developer for backend email setup.</p>
+                      </div>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <Alert variant="default" className="bg-green-50 border-green-200 text-green-800">
+                  <Check className="h-4 w-4" />
+                  <AlertTitle>Production Email Mode</AlertTitle>
+                  <AlertDescription>
+                    Your VPS is configured to send real emails. The OTP code has been sent to your email address.
+                  </AlertDescription>
+                </Alert>
+              )}
 
               <Alert variant="default" className={`${smtpStatus === 'success' ? 'bg-green-50 border-green-200 text-green-800' : smtpStatus === 'error' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-800'}`}>
                 <div className="flex items-center">
@@ -379,55 +467,62 @@ Secure: ${smtpConfig.secure ? 'Yes' : 'No'}`}
                   {smtpStatus === 'error' && <AlertCircle className="h-4 w-4 mr-2" />}
                   {smtpStatus === 'idle' && <Info className="h-4 w-4 mr-2" />}
                   <AlertTitle>
-                    {smtpStatus === 'sending' && 'Simulation in Progress...'}
-                    {smtpStatus === 'success' && 'Simulation Complete'}
-                    {smtpStatus === 'error' && 'Simulation Failed'}
-                    {smtpStatus === 'idle' && 'Email Simulation'}
+                    {smtpStatus === 'sending' && 'Sending Email...'}
+                    {smtpStatus === 'success' && 'Email Sent'}
+                    {smtpStatus === 'error' && 'Email Failed'}
+                    {smtpStatus === 'idle' && 'Email Status'}
                   </AlertTitle>
                 </div>
                 <AlertDescription>
-                  {smtpStatus === 'sending' && 'Simulating SMTP connection and email sending...'}
+                  {smtpStatus === 'sending' && (serverMode === 'production' ? 'Sending email to your address...' : 'Simulating SMTP connection and email sending...')}
                   {smtpStatus === 'success' && 
                     <>
                       <div className="mb-2">
-                        <span className="font-medium text-red-600">No real email was sent</span> due to browser limitations. 
-                        <Button 
-                          type="button" 
-                          variant="link" 
-                          size="sm" 
-                          className="h-auto p-0 mb-1 underline font-medium"
-                          onClick={() => setShowInfoCard(prev => !prev)}
-                        >
-                          Why?
-                        </Button>
+                        {serverMode === 'production' ? 
+                          'Email successfully sent to your address.' : 
+                          <>
+                            <span className="font-medium text-red-600">No real email was sent</span> due to browser limitations. 
+                            <Button 
+                              type="button" 
+                              variant="link" 
+                              size="sm" 
+                              className="h-auto p-0 mb-1 underline font-medium"
+                              onClick={() => setShowInfoCard(prev => !prev)}
+                            >
+                              Why?
+                            </Button>
+                          </>
+                        }
                       </div>
                       <div className="grid grid-cols-2 gap-2">
+                        {serverMode === 'simulation' && (
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full"
+                            onClick={showEmailPreview}
+                          >
+                            <ExternalLink className="h-3.5 w-3.5 mr-2" />
+                            View Email
+                          </Button>
+                        )}
                         <Button 
                           type="button" 
                           variant="outline" 
                           size="sm" 
-                          className="w-full"
-                          onClick={showEmailPreview}
-                        >
-                          <ExternalLink className="h-3.5 w-3.5 mr-2" />
-                          View Email
-                        </Button>
-                        <Button 
-                          type="button" 
-                          variant="outline" 
-                          size="sm" 
-                          className="w-full"
+                          className={serverMode === 'simulation' ? "w-full" : "w-full col-span-2"}
                           onClick={resendEmail}
                         >
                           <RefreshCw className="h-3.5 w-3.5 mr-2" />
-                          Resend Simulation
+                          Resend {serverMode === 'simulation' ? 'Simulation' : 'Email'}
                         </Button>
                       </div>
                     </>
                   }
                   {smtpStatus === 'error' && 
                     <>
-                      <div className="mb-2">There was a problem with the email simulation.</div>
+                      <div className="mb-2">There was a problem {serverMode === 'production' ? 'sending the email.' : 'with the email simulation.'}</div>
                       <Button 
                         type="button" 
                         variant="outline" 
@@ -436,11 +531,11 @@ Secure: ${smtpConfig.secure ? 'Yes' : 'No'}`}
                         onClick={resendEmail}
                       >
                         <RefreshCw className="h-3.5 w-3.5 mr-2" />
-                        Retry Simulation
+                        Retry {serverMode === 'production' ? 'Sending' : 'Simulation'}
                       </Button>
                     </>
                   }
-                  {smtpStatus === 'idle' && 'Preparing to simulate SMTP email sending...'}
+                  {smtpStatus === 'idle' && (serverMode === 'production' ? 'Preparing to send email...' : 'Preparing to simulate SMTP email sending...')}
                 </AlertDescription>
               </Alert>
 
@@ -473,17 +568,19 @@ Secure: ${smtpConfig.secure ? 'Yes' : 'No'}`}
                 </div>
               )}
               
-              <div className="flex items-center p-2 bg-blue-50 text-blue-800 rounded-md text-sm">
-                <Info className="h-4 w-4 mr-2 flex-shrink-0" />
-                <div>
-                  <p className="font-medium">See simulation details in your browser:</p>
-                  <ol className="list-decimal list-inside ml-1 space-y-1 mt-1">
-                    <li>Press F12 to open Developer Tools</li>
-                    <li>Click on the "Console" tab</li>
-                    <li>You'll see detailed simulation logs</li>
-                  </ol>
+              {serverMode === 'simulation' && (
+                <div className="flex items-center p-2 bg-blue-50 text-blue-800 rounded-md text-sm">
+                  <Info className="h-4 w-4 mr-2 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium">See simulation details in your browser:</p>
+                    <ol className="list-decimal list-inside ml-1 space-y-1 mt-1">
+                      <li>Press F12 to open Developer Tools</li>
+                      <li>Click on the "Console" tab</li>
+                      <li>You'll see detailed simulation logs</li>
+                    </ol>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </form>
         </CardContent>

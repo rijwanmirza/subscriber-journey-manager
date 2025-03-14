@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
 
@@ -89,6 +90,9 @@ const SMTP_SETTINGS_KEY = 'smtp_settings';
 
 // Provider component
 export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // State to track if real email service is available
+  const [realEmailAvailable, setRealEmailAvailable] = useState(false);
+  
   // Initialize storage
   const initializeStorage = () => {
     if (!localStorage.getItem(LISTS_STORAGE_KEY)) {
@@ -127,19 +131,84 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   useEffect(() => {
     initializeStorage();
+    checkEmailService();
   }, []);
+
+  // Check if the real email service is available
+  const checkEmailService = async () => {
+    try {
+      const response = await fetch('/api/health-check');
+      if (response.ok) {
+        setRealEmailAvailable(true);
+        console.log('Email service is available in production mode');
+      } else {
+        setRealEmailAvailable(false);
+        console.log('Email service not available, falling back to simulation mode');
+      }
+    } catch (error) {
+      setRealEmailAvailable(false);
+      console.log('Email service not available, falling back to simulation mode');
+    }
+  };
 
   // Generate a verification code
   const generateCode = () => {
     return Math.floor(100000 + Math.random() * 900000).toString();
   };
 
-  // Simulate email sending with detailed logging
+  // Send an email - either real or simulated
   const sendEmail = async (to: string, subject: string, body: string, options?: { cc?: string[], bcc?: string[] }) => {
+    // Try to send real email if service is available
+    if (realEmailAvailable) {
+      try {
+        const response = await fetch('/api/send-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            to,
+            subject,
+            html: body,
+            ...(options?.cc && { cc: options.cc }),
+            ...(options?.bcc && { bcc: options.bcc })
+          }),
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          toast({
+            title: "Email Sent",
+            description: `To: ${to}, Subject: ${subject}`,
+          });
+          return true;
+        } else {
+          console.error('Email sending failed:', result.message);
+          toast({
+            title: "Email Failed",
+            description: result.message || "Failed to send email",
+            variant: "destructive",
+          });
+          return false;
+        }
+      } catch (error) {
+        console.error('Email API error:', error);
+        // Fall back to simulation if real email fails
+        return simulateEmail(to, subject, body, options);
+      }
+    } else {
+      // Use simulation mode
+      return simulateEmail(to, subject, body, options);
+    }
+  };
+  
+  // Simulate email sending with detailed logging
+  const simulateEmail = async (to: string, subject: string, body: string, options?: { cc?: string[], bcc?: string[] }) => {
     const smtpSettings = JSON.parse(localStorage.getItem(SMTP_SETTINGS_KEY) || '{}');
     
     // Log detailed SMTP information
-    console.log('=============== EMAIL DETAILS ===============');
+    console.log('=============== EMAIL DETAILS (SIMULATION) ===============');
     console.log(`SMTP Server: ${smtpSettings.host}:${smtpSettings.port}`);
     console.log(`Encryption: ${smtpSettings.encryption}`);
     console.log(`From: ${smtpSettings.username}`);
@@ -154,9 +223,6 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     console.log('Body:');
     console.log(body);
     console.log('=============================================');
-    
-    // In a real application, this would connect to the SMTP server
-    // and send the actual email. For now, we're just simulating.
     
     // To help with debugging, show a detailed toast message
     toast({

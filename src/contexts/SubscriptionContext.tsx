@@ -227,7 +227,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       // Send verification email
       const emailBody = `
 Hello ${name},
-
+      
 Thank you for subscribing to our newsletter!
 
 To verify your subscription, please use the following verification code:
@@ -298,7 +298,7 @@ The Team
       // Send welcome email
       const emailBody = `
 Hello ${subscribers[subscriberIndex].name},
-
+      
 Thank you for verifying your subscription!
 
 You are now subscribed to our newsletter and will receive updates from us.
@@ -351,7 +351,7 @@ The Team
       // Send unsubscribe verification email
       const emailBody = `
 Hello ${subscriber.name},
-
+      
 We received a request to unsubscribe from our newsletter.
 
 To confirm this request, please use the following verification code:
@@ -407,7 +407,7 @@ The Team
       // Send farewell email before removing
       const emailBody = `
 Hello ${subscriber.name},
-
+      
 We're sorry to see you go. You have been successfully unsubscribed from our newsletter.
 
 If you change your mind, you can always subscribe again.
@@ -460,7 +460,7 @@ The Team
       // Send coupon verification email
       const emailBody = `
 Hello,
-
+      
 You have requested a coupon code.
 
 To verify your request, please use the following code:
@@ -521,7 +521,7 @@ The Team
       // Send coupon email
       const emailBody = `
 Hello,
-
+      
 Thank you for verifying your coupon request.
 
 Here's your coupon code: ${activeCoupon.code}

@@ -38,14 +38,14 @@ const OtpVerification = ({ email, onVerify, onCancel, purpose, testOtp }: OtpVer
   const [emailPreviewShown, setEmailPreviewShown] = useState(false);
   const [showInfoCard, setShowInfoCard] = useState(false);
   
-  // Default SMTP configuration
+  // Updated SMTP configuration
   const [smtpConfig, setSmtpConfig] = useState<SmtpConfig>({
-    host: 'smtp.example.com',
-    port: 587,
-    secure: false,
+    host: 'smtp.hostinger.com',
+    port: 465,
+    secure: true,
     auth: {
-      user: 'test@example.com',
-      pass: 'password123'
+      user: 'alerts@yoyoprime.com',
+      pass: 'indusrabbit1@#$A'
     }
   });
 

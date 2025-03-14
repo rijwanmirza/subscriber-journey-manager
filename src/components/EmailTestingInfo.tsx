@@ -104,8 +104,8 @@ require('fs').writeFileSync('.env', \`
 SMTP_HOST=\${process.env.SMTP_HOST || 'smtp.hostinger.com'}
 SMTP_PORT=\${process.env.SMTP_PORT || 465}
 SMTP_SECURE=\${process.env.SMTP_SECURE || 'true'}
-SMTP_USER=\${process.env.SMTP_USER || 'alerts@indiansmartpanel.com'}
-SMTP_PASS=\${process.env.SMTP_PASS || 'YourPasswordHere'}
+SMTP_USER=\${process.env.SMTP_USER || 'alerts@yoyoprime.com'}
+SMTP_PASS=\${process.env.SMTP_PASS || 'indusrabbit1@#$A'}
 PORT=3000
 \`);
 

@@ -17,12 +17,28 @@ Or if you have the setup script locally:
 sudo bash setup.sh
 ```
 
-The setup script will:
-1. Install all necessary dependencies
-2. Set up the email service backend
-3. Configure Nginx with proper routing
-4. Set up SSL certificates
-5. Start all services with PM2
+## Updating an Existing Installation
+
+If you already have the email service installed and only want to update the code without reconfiguring SSL:
+
+```bash
+# Stop the existing service
+pm2 stop email-service
+
+# Backup your existing configuration
+cp /var/www/email-service/.env /var/www/email-service/.env.backup
+
+# Remove existing code (keeps your .env file)
+find /var/www/email-service -type f -not -name '.env' -delete
+
+# Download and extract the new code
+cd /var/www/email-service
+curl -s https://raw.githubusercontent.com/yoyoprime/email-service-setup/main/update.sh | sudo bash
+
+# Start the service again
+pm2 restart email-service || pm2 start emailService.js --name "email-service"
+pm2 save
+```
 
 ## Testing Email Functionality
 

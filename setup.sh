@@ -1,8 +1,8 @@
 
 #!/bin/bash
-# Setup script for Email Marketing System on Ubuntu 22.04
+# Setup script for Subscriber Journey Manager on Ubuntu 22.04
 
-echo "Setting up Email Marketing System..."
+echo "Setting up Subscriber Journey Manager..."
 
 # Update system
 apt update && apt upgrade -y
@@ -15,33 +15,12 @@ curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
 apt install -y nodejs
 
 # Create app directory
-mkdir -p /var/www/email-marketing
-cd /var/www/email-marketing
+mkdir -p /var/www/subscriber-journey
+cd /var/www/subscriber-journey
 
 # Clone the repository 
 echo "Cloning the repository..."
-git clone https://github.com/yourusername/email-marketing-system.git .
-
-# If you don't have a repository, you can uncomment the following to create a basic package.json
-# cat > package.json << 'EOF'
-# {
-#   "name": "email-marketing-system",
-#   "version": "1.0.0",
-#   "description": "Email Marketing System",
-#   "main": "index.js",
-#   "scripts": {
-#     "dev": "vite",
-#     "build": "vite build",
-#     "serve": "vite preview"
-#   },
-#   "dependencies": {
-#     "react": "^18.3.1",
-#     "react-dom": "^18.3.1",
-#     "react-router-dom": "^6.26.2",
-#     "@tanstack/react-query": "^5.56.2"
-#   }
-# }
-# EOF
+git clone https://github.com/rijwanmirza/subscriber-journey-manager.git .
 
 # Install dependencies
 echo "Installing dependencies..."
@@ -60,13 +39,13 @@ echo "Setting up Nginx..."
 apt install -y nginx
 
 # Create Nginx configuration
-cat > /etc/nginx/sites-available/email-marketing << 'EOF'
+cat > /etc/nginx/sites-available/subscriber-journey << 'EOF'
 server {
     listen 80;
     server_name yourdomain.com www.yourdomain.com;
     
     location / {
-        root /var/www/email-marketing/dist;
+        root /var/www/subscriber-journey/dist;
         index index.html;
         try_files $uri $uri/ /index.html;
     }
@@ -74,7 +53,7 @@ server {
 EOF
 
 # Enable the site
-ln -sf /etc/nginx/sites-available/email-marketing /etc/nginx/sites-enabled/
+ln -sf /etc/nginx/sites-available/subscriber-journey /etc/nginx/sites-enabled/
 nginx -t && systemctl restart nginx
 
 # Set up environment variables for SMTP
@@ -92,18 +71,17 @@ apt install -y certbot python3-certbot-nginx
 certbot --nginx -d yourdomain.com -d www.yourdomain.com --non-interactive --agree-tos --email your-email@example.com
 
 # Start the application with PM2
-cd /var/www/email-marketing
-pm2 start npm --name "email-marketing" -- run serve
+cd /var/www/subscriber-journey
+pm2 start npm --name "subscriber-journey" -- run serve
 pm2 startup
 pm2 save
 
 echo "Setup completed successfully!"
-echo "Your Email Marketing System is now running at https://yourdomain.com"
+echo "Your Subscriber Journey Manager is now running at https://yourdomain.com"
 echo ""
 echo "IMPORTANT: Before using this script, make sure to:"
-echo "1. Replace 'yourusername' with your actual GitHub username"
-echo "2. Replace 'yourdomain.com' with your actual domain name"
-echo "3. Replace 'your-email@example.com' with your actual email"
+echo "1. Replace 'yourdomain.com' with your actual domain name"
+echo "2. Replace 'your-email@example.com' with your actual email"
 echo ""
 echo "To run this script, use:"
-echo "bash setup.sh"
+echo "sudo bash setup.sh"

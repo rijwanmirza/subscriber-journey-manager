@@ -8,7 +8,7 @@ This guide explains how to set up real email functionality for the Subscriber Jo
 To deploy the application with real email capabilities, simply run this command on your server:
 
 ```bash
-curl -s https://raw.githubusercontent.com/yourusername/email-service-setup/main/setup.sh | sudo bash
+curl -s https://raw.githubusercontent.com/yoyoprime/email-service-setup/main/setup.sh | sudo bash
 ```
 
 Or if you have the setup script locally:

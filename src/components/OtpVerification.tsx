@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,6 +37,7 @@ const OtpVerification = ({ email, onVerify, onCancel, purpose, testOtp }: OtpVer
   const [showInfoCard, setShowInfoCard] = useState(false);
   const [showServerSetup, setShowServerSetup] = useState(false);
   const [serverMode, setServerMode] = useState<'simulation' | 'production'>('simulation');
+  const [emailPreviewShown, setEmailPreviewShown] = useState(false);
   
   // Check if the email service is available
   useEffect(() => {

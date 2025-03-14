@@ -18,9 +18,11 @@ apt install -y nodejs
 mkdir -p /var/www/subscriber-journey
 cd /var/www/subscriber-journey
 
-# Clone the repository 
+# Clone the repository using GitHub token
 echo "Cloning the repository..."
-git clone https://github.com/rijwanmirza/subscriber-journey-manager.git .
+# Replace YOUR_GITHUB_TOKEN with your actual GitHub token
+GITHUB_TOKEN="YOUR_GITHUB_TOKEN"
+git clone https://${GITHUB_TOKEN}@github.com/rijwanmirza/subscriber-journey-manager.git .
 
 # Install dependencies
 echo "Installing dependencies..."
@@ -80,8 +82,9 @@ echo "Setup completed successfully!"
 echo "Your Subscriber Journey Manager is now running at https://yourdomain.com"
 echo ""
 echo "IMPORTANT: Before using this script, make sure to:"
-echo "1. Replace 'yourdomain.com' with your actual domain name"
-echo "2. Replace 'your-email@example.com' with your actual email"
+echo "1. Replace 'YOUR_GITHUB_TOKEN' with your actual GitHub personal access token"
+echo "2. Replace 'yourdomain.com' with your actual domain name"
+echo "3. Replace 'your-email@example.com' with your actual email"
 echo ""
 echo "To run this script, use:"
 echo "sudo bash setup.sh"

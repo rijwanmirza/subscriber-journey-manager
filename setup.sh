@@ -44,7 +44,7 @@ apt install -y nginx
 cat > /etc/nginx/sites-available/subscriber-journey << 'EOF'
 server {
     listen 80;
-    server_name yourdomain.com www.yourdomain.com;
+    server_name alerts.indiansmartpanel.com www.alerts.indiansmartpanel.com;
     
     location / {
         root /var/www/subscriber-journey/dist;
@@ -70,7 +70,7 @@ EOF
 # Set up SSL with Let's Encrypt
 echo "Setting up SSL..."
 apt install -y certbot python3-certbot-nginx
-certbot --nginx -d yourdomain.com -d www.yourdomain.com --non-interactive --agree-tos --email your-email@example.com
+certbot --nginx -d alerts.indiansmartpanel.com -d www.alerts.indiansmartpanel.com --non-interactive --agree-tos --email rijwamirza@gmail.com
 
 # Start the application with PM2
 cd /var/www/subscriber-journey
@@ -79,11 +79,11 @@ pm2 startup
 pm2 save
 
 echo "Setup completed successfully!"
-echo "Your Subscriber Journey Manager is now running at https://yourdomain.com"
+echo "Your Subscriber Journey Manager is now running at https://alerts.indiansmartpanel.com"
 echo ""
-echo "IMPORTANT: Before using this script, make sure to:"
-echo "1. Replace 'yourdomain.com' with your actual domain name"
-echo "2. Replace 'your-email@example.com' with your actual email"
+echo "IMPORTANT: The script has been configured with:"
+echo "1. Domain: alerts.indiansmartpanel.com"
+echo "2. Email: rijwamirza@gmail.com"
 echo ""
 echo "To run this script, use:"
 echo "sudo bash setup.sh"
